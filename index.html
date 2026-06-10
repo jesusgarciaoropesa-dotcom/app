@@ -286,7 +286,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <script>
 const SUPABASE_URL = 'https://lshxkfzsfscvwxqeesjr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaHhrZnpzZnNjdnd4cWVlc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjI2MzgsImV4cCI6MjA5NjE5ODYzOH0.Z1b5rwrvTA1M5P4xYrJ7uvhARp2yLQ0k-7ur51NQRwI';
-const ADMIN_PASS = 'hostal2025 ';
+const ADMIN_PASS = 'hostal2025';
 const RESEND_KEY = 're_PL2ruKgq_6VVURKgB7S9NdQaD77DRXzrS';
 const ADMIN_EMAIL = 'jesusgarciaoropesa@gmail.com';
 const FROM_EMAIL = 'onboarding@resend.dev';
@@ -505,7 +505,7 @@ async function loadAll(){
     inventory=inv.length?inv:[{room_type:'doble',units:3},{room_type:'apartamento',units:2},{room_type:'familiar',units:2}];
     // Load cleaning status from Supabase (column cleaning_status)
     reservations.forEach(r=>{
-      cleaningStatus[r.id]=r.cleaning_status||'pendiente';
+      cleaningStatus[r.id]=(r.cleaning_status||'pendiente').toLowerCase();
     });
     renderStats();
     renderTab();
@@ -993,11 +993,12 @@ function renderLimpieza(){
 }
 
 async function updateCleaning(id,status){
-  cleaningStatus[id]=status;
+  const s=status.toLowerCase();
+  cleaningStatus[id]=s;
   renderTab();
   // Save to Supabase
   try{
-    await sbApi('/reservations?id=eq.'+id,'PATCH',{cleaning_status:status});
+    await sbApi('/reservations?id=eq.'+id,'PATCH',{cleaning_status:s});
   }catch(e){console.error('Error saving cleaning status',e);}
   showToast('✓ Limpieza actualizada');
 }
