@@ -548,7 +548,7 @@ function renderCleaningView() {
     if(isToday) card += ' · <strong style="color:var(--warn)">HOY</strong>';
     if(isPast&&cs!=='finalizada') card += ' · <strong style="color:var(--danger)">VENCIDO</strong>';
     card += '</div></div>';
-    card += '<select class="clean-sel" onchange="updateCleaningRole(''+r.id+'',this.value)">';
+    card += '<select class="clean-sel" data-id="'+r.id+'" onchange="updateCleaningRole(this.dataset.id,this.value)">';
     CLEAN_STATES.forEach(function(s){
       card += '<option value="'+s+'"'+(cs===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';
     });
@@ -687,7 +687,7 @@ function resCard(r, i, showLinks) {
   if(r.guest_phone || r.guest_email) {
     html += '<div class="res-contact">';
     if(r.guest_phone) html += '<button class="contact-btn wa" data-phone="' + r.guest_phone + '" data-name="' + r.guest_name + '" onclick="whatsapp(this.dataset.phone,this.dataset.name)">📱 WhatsApp</button>';
-    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + r.guest_email + '" onclick="window.open('mailto:'+this.dataset.email)">✉️ Email</button>';
+    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + r.guest_email + '" onclick="window.open(&quot;mailto:&quot;+this.dataset.email)">✉️ Email</button>';
     html += '</div>';
   }
   if(showLinks) {
@@ -701,8 +701,8 @@ function resCard(r, i, showLinks) {
     html += '<button class="link-save" data-id="' + id + '" data-type="glizzz" onclick="saveLink(this.dataset.id,this.dataset.type)">Enviar</button></div>';
   }
   html += '<div class="res-actions">';
-  if(r.status!=='confirmada') html += '<button class="act-btn ok" data-id="' + id + '" onclick="quickStatus(this.dataset.id,'confirmada')">✓ Confirmar</button>';
-  if(r.status!=='cancelada') html += '<button class="act-btn danger" data-id="' + id + '" onclick="quickStatus(this.dataset.id,'cancelada')">✗ Cancelar</button>';
+  if(r.status!=='confirmada') html += '<button class="act-btn ok" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="confirmada">✓ Confirmar</button>';
+  if(r.status!=='cancelada') html += '<button class="act-btn danger" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="cancelada">✗ Cancelar</button>';
   html += '<button class="act-btn" style="flex:0;padding:7px 11px" data-id="' + id + '" onclick="openEdit(this.dataset.id)">✏️</button>';
   html += '<button class="act-btn danger" style="flex:0;padding:7px 11px" data-id="' + id + '" data-name="' + r.guest_name + '" onclick="deleteRes(this.dataset.id,this.dataset.name)">🗑</button>';
   html += '<button class="act-btn" style="flex:0;padding:7px 8px;background:var(--warn-bg);border-color:#fcd34d;color:var(--warn)" data-id="' + id + '" onclick="sendReviewEmail(this.dataset.id)">⭐</button>';
