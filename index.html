@@ -317,12 +317,9 @@ async function sbApi(path, method='GET', body=null){
 // ── EMAIL via RESEND ──
 async function sendEmail(to, subject, html) {
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://email-hostal.jesusgarciaoropesa.workers.dev/', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + RESEND_KEY,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: HOSTAL_NAME + ' <' + FROM_EMAIL + '>',
         to: [to],
@@ -332,7 +329,7 @@ async function sendEmail(to, subject, html) {
     });
     if (!res.ok) {
       const err = await res.text();
-      console.error('Resend error:', err);
+      console.error('Email error:', err);
       return false;
     }
     return true;
