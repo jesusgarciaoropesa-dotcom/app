@@ -990,34 +990,29 @@ function renderHistorial(){
   const list=reservations.filter(r=>r.check_out<yesterday||r.status==='cancelada')
     .sort((a,b)=>b.check_out.localeCompare(a.check_out));
   if(!list.length) return'<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en el historial</div></div>';
-  return list.map((r,i)=>{
-    const n=nights(r.check_in,r.check_out);
-    const pc=r.status==='pendiente'?'pill-p':r.status==='confirmada'?'pill-c':'pill-x';
-    return\`<div class="res-card" style="opacity:0.85;animation-delay:\${i*0.04}s">
-      <div class="res-top">
-        <div style="flex:1;min-width:0">
-          <div class="res-name">\${r.guest_name}</div>
-          <div class="res-room-label">\${ROOM_LABELS[r.room_type]||r.room_type}</div>
-          <div class="res-dates">
-            <span>\${fmtDate(r.check_in)}</span>
-            <span style="color:var(--ink3)">→</span>
-            <span>\${fmtDate(r.check_out)}</span>
-            <span class="res-nights">\${n}n</span>
-          </div>
-        </div>
-        <span class="pill \${pc}">\${r.status}</span>
-      </div>
-      <div class="res-meta">
-        <div class="res-field"><strong>\${r.total_price||'—'}€</strong> total</div>
-        <div class="res-field">\${r.num_guests} huésped\${r.num_guests>1?'es':''}</div>
-        \${r.guest_email?\`<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${r.guest_email}</div>\`:''}
-        \${r.guest_phone?\`<div class="res-field" style="grid-column:span 2">\${r.guest_phone}</div>\`:''}
-      </div>
-      <div class="res-actions">
-        <button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('\${r.id}')">✏️ Editar</button>
-        <button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('\${r.id}','\${r.guest_name}')">🗑</button>
-      </div>
-    </div>\`;
+  return list.map(function(r,i){
+    var n=nights(r.check_in,r.check_out);
+    var pc=r.status==='pendiente'?'pill-p':r.status==='confirmada'?'pill-c':'pill-x';
+    var html='<div class="res-card" style="opacity:0.85;animation-delay:'+i*0.04+'s">';
+    html+='<div class="res-top">';
+    html+='<div style="flex:1;min-width:0">';
+    html+='<div class="res-name">'+r.guest_name+'</div>';
+    html+='<div class="res-room-label">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
+    html+='<div class="res-dates"><span>'+fmtDate(r.check_in)+'</span><span style="color:var(--ink3)">→</span><span>'+fmtDate(r.check_out)+'</span><span class="res-nights">'+n+'n</span></div>';
+    html+='</div>';
+    html+='<span class="pill '+pc+'">'+r.status+'</span>';
+    html+='</div>';
+    html+='<div class="res-meta">';
+    html+='<div class="res-field"><strong>'+(r.total_price||'—')+'€</strong> total</div>';
+    html+='<div class="res-field">'+r.num_guests+' huésped'+(r.num_guests>1?'es':'')+'</div>';
+    if(r.guest_email) html+='<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.guest_email+'</div>';
+    if(r.guest_phone) html+='<div class="res-field" style="grid-column:span 2">'+r.guest_phone+'</div>';
+    html+='</div>';
+    html+='<div class="res-actions">';
+    html+='<button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('+''''+r.id+''''+')">✏️ Editar</button>';
+    html+='<button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('+''''+r.id+''''+','+''''+r.guest_name+''''+')">🗑</button>';
+    html+='</div></div>';
+    return html;
   }).join('')+'<div style="height:20px"></div>';
 }
 
