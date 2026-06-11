@@ -155,6 +155,13 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:5px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* MODAL EDITAR */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-title{font-family:"Cormorant Garamond",serif;font-size:20px;font-weight:600;color:var(--ink)}
+.modal-close{background:none;border:none;font-size:22px;color:var(--ink3);cursor:pointer;padding:4px}
+
 /* LIMPIEZA */
 .clean-section{padding:10px 14px 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:var(--ink3);font-weight:600}
 .clean-card{margin:6px 14px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:12px}
@@ -281,6 +288,17 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 </div>
 
 </div>
+<!-- MODAL EDITAR RESERVA -->
+<div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEdit()">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div class="modal-title">Editar reserva</div>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div id="edit-form-content"></div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -605,6 +623,7 @@ function renderReservations(){
       <div class="res-actions">
         ${r.status!=='confirmada'?`<button class="act-btn ok" onclick="quickStatus('${r.id}','confirmada')">✓ Confirmar</button>`:''}
         ${r.status!=='cancelada'?`<button class="act-btn danger" onclick="quickStatus('${r.id}','cancelada')">✗ Cancelar</button>`:''}
+        <button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('${r.id}')">✏️</button>
         <button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('${r.id}','${r.guest_name}')">🗑</button>
       </div>
     </div>`;
@@ -981,9 +1000,12 @@ function renderLimpieza(){
           <div class="clean-room">${ROOM_LABELS[r.room_type]||r.room_type}</div>
           <div class="clean-meta">${r.guest_name} · Checkout: ${fmtDate(r.check_out)}</div>
         </div>
-        <select class="clean-sel" onchange="updateCleaning('${r.id}',this.value)">
-          ${CLEAN_STATES.map(s=>`<option value="${s}" ${s==='finalizada'?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
-        </select>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <select class="clean-sel" onchange="updateCleaning('${r.id}',this.value)">
+            ${CLEAN_STATES.map(s=>`<option value="${s}" ${s==='finalizada'?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+          <button style="background:#fef3c7;border:1px solid #fcd34d;color:#92600a;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap" onclick="sendReviewEmail('${r.id}')">⭐ Pedir reseña</button>
+        </div>
       </div>`).join('');
   }
   return html+'<div style="height:20px"></div>';
@@ -1044,6 +1066,102 @@ async function changeInv(room_type,delta){
     await sbApi('/room_inventory?room_type=eq.'+room_type,'PATCH',{units:nv,updated_at:new Date().toISOString()});
     showToast('✓ Inventario actualizado');
   }catch(e){showToast('⚠️ Error','error');}
+}
+
+// ── EDITAR RESERVA ──
+function openEdit(id){
+  const r=reservations.find(x=>x.id===id);
+  if(!r)return;
+  document.getElementById('edit-form-content').innerHTML=`
+    <div class="form-group">
+      <label class="form-label">Tipo de habitación</label>
+      <select class="form-input form-select" id="e-room">
+        <option value="doble" ${r.room_type==='doble'?'selected':''}>Habitación doble — 40€/noche</option>
+        <option value="apartamento" ${r.room_type==='apartamento'?'selected':''}>Apartamento con cocina — 60€/noche</option>
+        <option value="familiar" ${r.room_type==='familiar'?'selected':''}>Familiar / Hidromasaje — 75€/noche</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Entrada</label>
+        <input type="date" class="form-input" id="e-ci" value="${r.check_in}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Salida</label>
+        <input type="date" class="form-input" id="e-co" value="${r.check_out}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre completo</label>
+      <input type="text" class="form-input" id="e-name" value="${r.guest_name}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input type="tel" class="form-input" id="e-phone" value="${r.guest_phone||''}" inputmode="tel">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="e-email" value="${r.guest_email}" inputmode="email">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Huéspedes</label>
+        <select class="form-input form-select" id="e-guests">
+          ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${r.num_guests===n?'selected':''}>${n}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio total (€)</label>
+        <input type="number" class="form-input" id="e-price" value="${r.total_price||''}" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Estado</label>
+      <select class="form-input form-select" id="e-status">
+        <option value="pendiente" ${r.status==='pendiente'?'selected':''}>Pendiente</option>
+        <option value="confirmada" ${r.status==='confirmada'?'selected':''}>Confirmada</option>
+        <option value="cancelada" ${r.status==='cancelada'?'selected':''}>Cancelada</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="e-btn" onclick="saveEdit('${r.id}')">Guardar cambios</button>
+    <div style="height:16px"></div>
+  `;
+  document.getElementById('edit-modal').style.display='flex';
+}
+
+function closeEdit(){
+  document.getElementById('edit-modal').style.display='none';
+}
+
+async function saveEdit(id){
+  const room=document.getElementById('e-room').value;
+  const ci=document.getElementById('e-ci').value;
+  const co=document.getElementById('e-co').value;
+  const name=document.getElementById('e-name').value.trim();
+  const phone=document.getElementById('e-phone').value.trim();
+  const email=document.getElementById('e-email').value.trim();
+  const guests=document.getElementById('e-guests').value;
+  const price=document.getElementById('e-price').value;
+  const status=document.getElementById('e-status').value;
+  if(!name||!email||!ci||!co){showToast('⚠️ Rellena todos los campos');return;}
+  if(new Date(co)<=new Date(ci)){showToast('⚠️ La salida debe ser posterior a la entrada');return;}
+  const btn=document.getElementById('e-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Guardando…';
+  const nights=Math.round((new Date(co)-new Date(ci))/86400000);
+  const total=price?parseFloat(price):nights*PRICES[room];
+  try{
+    await sbApi('/reservations?id=eq.'+id,'PATCH',{
+      room_type:room,guest_name:name,guest_email:email,
+      guest_phone:phone||'',check_in:ci,check_out:co,
+      num_guests:parseInt(guests),total_price:total,status
+    });
+    showToast('✓ Reserva actualizada','success');
+    closeEdit();
+    await loadAll();
+  }catch(e){
+    showToast('⚠️ Error al guardar','error');
+    btn.disabled=false;btn.textContent='Guardar cambios';
+  }
 }
 
 // ── TOAST ──
