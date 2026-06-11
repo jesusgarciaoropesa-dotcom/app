@@ -542,8 +542,7 @@ function renderCleaningView() {
   var finalizadas = list.filter(function(r){ return (r.cleaning_status||'pendiente').toLowerCase() === 'finalizada'; });
 
   function buildCard(r, i) {
-    var cs = (r.cleaning_status || 'pendiente').toLowerCase();
-    cleaningStatus[r.id] = cs;
+    var cs = (cleaningStatus[r.id] || r.cleaning_status || 'pendiente').toLowerCase();
     var isPast = r.check_out < today;
     var dot = cs==='finalizada'?'dot-done':cs==='en limpieza'?'dot-cleaning':'dot-pending';
     var card = '<div class="clean-card'+(isPast&&cs!=='finalizada'?' urgent':'')+'" style="animation-delay:'+i*0.04+'s">';
@@ -579,11 +578,18 @@ function renderCleaningView() {
 async function updateCleaningRole(id, status) {
   var s = status.toLowerCase();
   cleaningStatus[id] = s;
+  // Update local reservations cache so renderCleaningView reads correct state
+  var r = reservations.find(function(x){ return x.id===id; });
+  if(r) r.cleaning_status = s;
+  renderCleaningView();
   try {
     await sbApi('/reservations?id=eq.'+id, 'PATCH', {cleaning_status:s});
-    renderCleaningView();
     showToast('✓ Estado actualizado');
-  } catch(e) { showToast('⚠️ Error al guardar','error'); }
+  } catch(e) {
+    // Revert on error
+    if(r) r.cleaning_status = r.cleaning_status;
+    showToast('⚠️ Error al guardar','error');
+  }
 }
 function doLogout() {
   document.getElementById('main-screen').style.display = 'none';
