@@ -518,51 +518,75 @@ async function loadCleaning() {
 }
 function renderCleaningView() {
   var today = new Date().toISOString().split('T')[0];
-  var active = reservations.filter(function(r){return r.status!=='cancelada';})
-    .sort(function(a,b){return a.check_out.localeCompare(b.check_out);});
-  if(!active.length) { document.getElementById('cleaning-content').innerHTML = '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones pendientes</div></div>'; return; }
-  var pending = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')!=='finalizada';});
-  var done = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')==='finalizada';});
-  var html = '';
-  if(pending.length) {
-    html += '<div class="clean-section">Pendientes ('+pending.length+')</div>';
-    html += pending.map(function(r,i){
-      var cs = cleaningStatus[r.id]||'pendiente';
-      var isToday = r.check_out===today;
-      var isPast = r.check_out<today;
-      var dot = CLEAN_DOTS[cs]||'dot-pending';
-      var card = '<div class="clean-card'+(isPast?' urgent':'')+'" style="animation-delay:'+i*0.04+'s">';
-      card += '<div class="clean-status-dot '+dot+'"></div>';
-      card += '<div class="clean-info"><div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-      card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out);
-      if(isToday) card += ' · <strong style="color:var(--warn)">HOY</strong>';
-      if(isPast) card += ' · <strong style="color:var(--danger)">VENCIDO</strong>';
-      card += '</div></div>';
-      card += '<select class="clean-sel" onchange="updateCleaningRole(\''+r.id+'\',this.value)">';
-      CLEAN_STATES.forEach(function(s){ card += '<option value="'+s+'"'+(cs===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>'; });
-      card += '</select></div>';
-      return card;
-    }).join('');
-  }
-  if(done.length) {
-    html += '<div class="clean-section" style="margin-top:12px">Finalizadas ('+done.length+')</div>';
-    html += done.map(function(r,i){
-      var card = '<div class="clean-card done" style="animation-delay:'+i*0.04+'s">';
-      card += '<div class="clean-status-dot dot-done"></div>';
-      card += '<div class="clean-info"><div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-      card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out)+'</div></div>';
-      card += '<select class="clean-sel" onchange="updateCleaningRole(\''+r.id+'\',this.value)">';
-      CLEAN_STATES.forEach(function(s){ card += '<option value="'+s+'"'+(s==='finalizada'?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>'; });
-      card += '</select></div>';
-      return card;
-    }).join('');
-  }
-  document.getElementById('cleaning-content').innerHTML = html + '<div style="height:20px"></div>';
-}
+  var tomorrow = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  var c = document.getElementById('cleaning-content');
 
+  // Only active reservations, not cancelled
+  var base = reservations.filter(function(r){ return r.status !== 'cancelada'; });
+
+  // Sync cleaningStatus from reservations
+  base.forEach(function(r){
+    if(!cleaningStatus[r.id]) cleaningStatus[r.id] = (r.cleaning_status||'pendiente').toLowerCase();
+  });
+
+  // Sections — only 2 states: pendiente / finalizada
+  var hoy = base.filter(function(r){
+    return r.check_out === today && cleaningStatus[r.id] !== 'finalizada';
+  }).sort(function(a,b){ return a.check_out.localeCompare(b.check_out); });
+
+  var manana = base.filter(function(r){
+    return r.check_out === tomorrow && cleaningStatus[r.id] !== 'finalizada';
+  }).sort(function(a,b){ return a.check_out.localeCompare(b.check_out); });
+
+  var proximas = base.filter(function(r){
+    return r.check_out > tomorrow && cleaningStatus[r.id] !== 'finalizada';
+  }).sort(function(a,b){ return a.check_out.localeCompare(b.check_out); });
+
+  // Finalizadas: only today's checkouts
+  var finalizadas = base.filter(function(r){
+    return r.check_out === today && cleaningStatus[r.id] === 'finalizada';
+  }).sort(function(a,b){ return a.check_out.localeCompare(b.check_out); });
+
+  if(!hoy.length && !manana.length && !proximas.length && !finalizadas.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones pendientes</div></div>';
+    return;
+  }
+
+  function buildCard(r, i) {
+    var cs = cleaningStatus[r.id] || 'pendiente';
+    var dot = cs === 'finalizada' ? 'dot-done' : 'dot-pending';
+    var card = '<div class="clean-card" style="animation-delay:'+i*0.04+'s">';
+    card += '<div class="clean-status-dot '+dot+'"></div>';
+    card += '<div class="clean-info">';
+    card += '<div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
+    card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out)+'</div>';
+    card += '</div>';
+    card += '<select class="clean-sel" data-id="'+r.id+'" onchange="updateCleaningRole(this.dataset.id,this.value)">';
+    card += '<option value="pendiente"'+(cs==='pendiente'?' selected':'')+'>Pendiente</option>';
+    card += '<option value="finalizada"'+(cs==='finalizada'?' selected':'')+'>Finalizada</option>';
+    card += '</select></div>';
+    return card;
+  }
+
+  function buildSection(title, color, emoji, items) {
+    if(!items.length) return '';
+    var html = '<div style="padding:10px 12px 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:'+color+'">'+emoji+' '+title+' ('+items.length+')</div>';
+    html += items.map(function(r,i){ return buildCard(r,i); }).join('');
+    return html;
+  }
+
+  c.innerHTML =
+    buildSection('Hoy', 'var(--warn)', '🟠', hoy) +
+    buildSection('Mañana', '#2563eb', '🔵', manana) +
+    buildSection('Próximas', 'var(--ink3)', '⚪', proximas) +
+    buildSection('Finalizadas hoy', 'var(--ok)', '✅', finalizadas) +
+    '<div style="height:20px"></div>';
+}
 async function updateCleaningRole(id, status) {
   var s = status.toLowerCase();
   cleaningStatus[id] = s;
+  var r = reservations.find(function(x){ return x.id===id; });
+  if(r) r.cleaning_status = s;
   renderCleaningView();
   try { await sbApi('/reservations?id=eq.'+id, 'PATCH', {cleaning_status:s}); } catch(e) {}
   showToast('✓ Limpieza actualizada');
@@ -644,11 +668,11 @@ function fmtDate(d) { if(!d)return'—'; var p=d.split('-'); return p[2]+'/'+p[1
 function renderReservations() {
   var today = new Date().toISOString().split('T')[0];
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  var active = reservations.filter(function(r){ return r.check_out>=yesterday && r.status!=='cancelada'; });
-  var pendOld = reservations.filter(function(r){
-    return r.status==='pendiente' && !active.find(function(x){return x.id===r.id;});
+  // Active: checkout >= today OR checkout was yesterday (1 day grace), excluding cancelled
+  var active = reservations.filter(function(r){
+    if(r.status === 'cancelada') return false;
+    return r.check_out >= yesterday;
   });
-  active = active.concat(pendOld);
   var list = filterStatus==='all' ? active : active.filter(function(r){ return r.status===filterStatus; });
   if(!list.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No hay reservas activas'+(filterStatus!=='all'?' con este filtro':'')+'</div></div>';
   return list.map(function(r,i){ return resCard(r,i,true); }).join('') + '<div style="height:20px"></div>';
@@ -657,8 +681,11 @@ function renderReservations() {
 // ── HISTORIAL ──
 function renderHistorial() {
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  var list = reservations.filter(function(r){ return r.check_out<yesterday || r.status==='cancelada'; })
-    .sort(function(a,b){ return b.check_out.localeCompare(a.check_out); });
+  // History: checkout before yesterday OR cancelled (checkout >= yesterday cancelled included)
+  var list = reservations.filter(function(r){
+    if(r.status === 'cancelada') return true;
+    return r.check_out < yesterday;
+  }).sort(function(a,b){ return b.check_out.localeCompare(a.check_out); });
   if(!list.length) return '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en el historial</div></div>';
   return list.map(function(r,i){ return resCard(r,i,false); }).join('') + '<div style="height:20px"></div>';
 }
