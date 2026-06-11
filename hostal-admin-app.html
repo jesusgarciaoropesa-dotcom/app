@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#8B0000">
+<title>Admin · Hostal La Plata</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --cr:#8B0000;--cr2:#6a0000;--cr3:#b30000;
+  --gold:#c8a84b;
+  --bg:#f7f3ef;--surface:#fff;--surface2:#f0ebe4;--surface3:#e6dfd6;
+  --ink:#1a0e0e;--ink2:#4a3030;--ink3:#8a7070;
+  --border:#e0d5c8;--border2:#cfc4b4;
+  --ok:#1a7a4a;--ok-bg:#d1fae5;
+  --warn:#92600a;--warn-bg:#fef3c7;
+  --danger:#b91c1c;--danger-bg:#fee2e2;
+  --blue:#1d4ed8;--blue-bg:#dbeafe;
+  --r:12px;--r-sm:8px;
+}
+html{height:100%;overflow:hidden}body{height:100%;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--ink);overflow:hidden;position:fixed;width:100%;left:0;top:0}
+h1,h2,h3{font-family:'Cormorant Garamond',serif}
+#app{display:flex;flex-direction:column;height:100%;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg);overflow:hidden}
+
+/* LOGIN */
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:0;padding:32px 24px;background:linear-gradient(160deg,var(--cr2),#2a0808)}
+.login-card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.login-logo{width:56px;height:56px;background:var(--cr);border-radius:14px;display:grid;place-items:center;margin:0 auto 16px;font-size:26px}
+.login-title{font-size:24px;font-weight:600;text-align:center;color:var(--ink);margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--ink3);text-align:center;margin-bottom:24px}
+.login-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.15s;margin-bottom:12px}
+.login-input:focus{border-color:var(--cr)}
+.login-btn{width:100%;background:var(--cr);color:#fff;border:none;padding:13px;border-radius:var(--r-sm);font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.login-err{color:var(--danger);font-size:12px;text-align:center;margin-top:8px;min-height:16px}
+
+/* MAIN */
+#main-screen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.topbar{background:var(--cr);color:#fff;padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-icon{font-size:20px}
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
+.topbar-sub{font-size:10px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80}
+.conn-dot.off{background:#f87171;box-shadow:0 0 6px #f87171}
+.logout-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* STATS */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);background:var(--cr2);border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0}
+.stat-item{padding:10px 6px;text-align:center;color:#fff;border-right:1px solid rgba(255,255,255,0.1)}
+.stat-item:last-child{border-right:none}
+.stat-n{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;line-height:1}
+.stat-l{font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px}
+.stat-n.warn{color:#fcd34d}
+.stat-n.ok{color:#6ee7b7}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'DM Sans',sans-serif;transition:all 0.15s}
+.tab.active{color:var(--cr);border-bottom-color:var(--cr)}
+.tab-icon{font-size:15px;display:block;margin-bottom:2px}
+
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;min-height:0}
+.scroll::-webkit-scrollbar{display:none}
+
+/* TOOLBAR */
+.toolbar{padding:10px 14px;display:flex;align-items:center;gap:7px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.toolbar::-webkit-scrollbar{display:none}
+.fchip{padding:6px 11px;border-radius:20px;border:1px solid var(--border2);background:none;font-size:11px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0}
+.fchip.active{background:var(--cr);border-color:var(--cr);color:#fff}
+.toolbar-spacer{flex:1}
+.refresh-btn{background:none;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--ink2);cursor:pointer;flex-shrink:0}
+
+/* RES CARDS */
+.res-card{margin:10px 14px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden}
+.res-card.urgent{border-left:3px solid var(--danger)}
+.res-top{padding:12px 14px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.res-name{font-size:15px;font-weight:600;color:var(--ink)}
+.res-room-label{font-size:11px;color:var(--ink3);margin-top:2px}
+.res-dates{font-size:11px;color:var(--ink2);margin-top:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.res-nights{background:var(--surface2);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--ink2)}
+.today-badge{background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700}
+.pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0}
+.pill-p{background:var(--warn-bg);color:var(--warn)}
+.pill-c{background:var(--ok-bg);color:var(--ok)}
+.pill-x{background:var(--danger-bg);color:var(--danger)}
+.res-meta{padding:4px 14px 10px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.res-field{font-size:11px;color:var(--ink3)}
+.res-field strong{color:var(--ink2);font-weight:500}
+.res-contact{padding:0 14px 10px;display:flex;gap:8px}
+.contact-btn{flex:1;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;text-align:center}
+.contact-btn.wa{background:#dcfce7;color:#166534}
+.contact-btn.mail{background:var(--blue-bg);color:var(--blue)}
+.res-links{padding:8px 14px;background:var(--surface2);display:flex;gap:6px;align-items:center;border-top:1px solid var(--border)}
+.link-label{font-size:10px;font-weight:600;color:var(--ink3);white-space:nowrap}
+.link-input{flex:1;border:1px solid var(--border2);border-radius:6px;padding:7px 9px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--ink);background:#fff;outline:none}
+.link-input:focus{border-color:var(--cr)}
+.link-save{background:var(--cr);color:#fff;border:none;border-radius:6px;padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.link-saved{font-size:10px;color:var(--ok);font-weight:600;white-space:nowrap}
+.res-actions{padding:8px 14px;display:flex;gap:6px;border-top:1px solid var(--border)}
+.act-btn{flex:1;padding:8px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);background:var(--surface2);color:var(--ink2);text-align:center}
+.act-btn.ok{background:var(--ok-bg);border-color:#86efac;color:var(--ok)}
+.act-btn.danger{background:var(--danger-bg);border-color:#fca5a5;color:var(--danger)}
+
+/* CALENDAR PICKER */
+.cal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.cal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:80vh;overflow-y:auto}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cal-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink)}
+.cal-nav{display:flex;gap:8px}
+.cal-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);background:none;font-size:16px;cursor:pointer;display:grid;place-items:center}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.cal-wd{text-align:center;font-size:10px;font-weight:600;color:var(--ink3);padding:4px 0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day{aspect-ratio:1;display:grid;place-items:center;border-radius:8px;font-size:13px;cursor:pointer;position:relative;border:none;background:none;font-family:'DM Sans',sans-serif;color:var(--ink)}
+.cal-day:disabled{color:var(--ink3);cursor:not-allowed;opacity:0.4}
+.cal-day.other-month{opacity:0.25}
+.cal-day.today{font-weight:700;color:var(--cr)}
+.cal-day.selected-start,.cal-day.selected-end{background:var(--cr);color:#fff;border-radius:8px}
+.cal-day.in-range{background:rgba(139,0,0,0.1);border-radius:0}
+.cal-day.selected-start{border-radius:8px 0 0 8px}
+.cal-day.selected-end{border-radius:0 8px 8px 0}
+.cal-day.selected-start.selected-end{border-radius:8px}
+.cal-day.blocked{background:rgba(185,28,28,0.08);color:#b91c1c;cursor:not-allowed;position:relative;text-decoration:line-through;opacity:0.6}
+.cal-day.partial{background:rgba(245,158,11,0.12);color:#92600a;position:relative}
+.cal-day.partial::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#f59e0b}
+.cal-selected-info{margin:12px 0;padding:12px;background:var(--surface2);border-radius:var(--r-sm);display:flex;justify-content:space-between;align-items:center}
+.cal-sel-label{font-size:11px;color:var(--ink3)}
+.cal-sel-val{font-size:13px;font-weight:600;color:var(--ink)}
+.cal-confirm{width:100%;background:var(--cr);color:#fff;border:none;padding:13px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px}
+.cal-confirm:disabled{opacity:0.4;cursor:not-allowed}
+
+/* FORM */
+.form-wrap{padding:14px 16px 60px}
+.form-section{font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:var(--cr);font-weight:600;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.form-section:first-child{margin-top:4px}
+.form-group{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:5px;display:block}
+.form-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:11px 13px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);outline:none;transition:border-color 0.15s}
+.form-input:focus{border-color:var(--cr)}
+.form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a7070' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.date-picker-btn{width:100%;border:1.5px solid var(--border2);border-radius:var(--r-sm);padding:11px 13px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);outline:none;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between}
+.date-picker-btn.has-value{border-color:var(--cr);background:rgba(139,0,0,0.03)}
+.date-range-display{background:rgba(139,0,0,0.05);border:1px solid rgba(139,0,0,0.15);border-radius:var(--r-sm);padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:12px}
+.date-range-display.empty{border-style:dashed;color:var(--ink3)}
+.date-range-arrow{color:var(--ink3);font-size:16px}
+.date-range-nights{background:var(--cr);color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700}
+.price-preview{background:rgba(139,0,0,0.06);border:1px solid rgba(139,0,0,0.15);border-radius:var(--r-sm);padding:11px 13px;font-size:13px;color:var(--ink2);margin-bottom:12px;display:none;text-align:center}
+.price-preview strong{color:var(--cr);font-size:16px}
+.btn-primary{width:100%;background:var(--cr);color:#fff;border:none;padding:14px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* MODAL EDITAR */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-title{font-family:"Cormorant Garamond",serif;font-size:20px;font-weight:600;color:var(--ink)}
+.modal-close{background:none;border:none;font-size:22px;color:var(--ink3);cursor:pointer;padding:4px}
+
+/* LIMPIEZA */
+.clean-section{padding:10px 14px 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:var(--ink3);font-weight:600}
+.clean-card{margin:6px 14px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.clean-card.urgent{border-left:3px solid var(--danger)}
+.clean-status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-pending{background:#f59e0b}
+.dot-cleaning{background:#3b82f6}
+.dot-done{background:#22c55e}
+.clean-info{flex:1;min-width:0}
+.clean-room{font-size:13px;font-weight:600;color:var(--ink)}
+.clean-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+.clean-sel{border:1px solid var(--border2);border-radius:6px;padding:7px 8px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);outline:none;cursor:pointer;flex-shrink:0;max-width:110px}
+
+/* INVENTARIO */
+.inv-card{margin:10px 14px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px}
+.inv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.inv-name{font-size:14px;font-weight:600;color:var(--ink)}
+.inv-price{font-size:11px;color:var(--ink3);margin-top:2px}
+.inv-counter{display:flex;align-items:center;gap:10px}
+.inv-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);color:var(--ink);font-size:20px;cursor:pointer;display:grid;place-items:center;font-family:'DM Sans',sans-serif}
+.inv-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--cr);min-width:28px;text-align:center}
+.inv-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.inv-bar-fill{height:100%;background:var(--cr);border-radius:3px;transition:width 0.3s}
+.inv-sub{font-size:10px;color:var(--ink3);margin-top:5px}
+
+.empty{padding:48px 24px;text-align:center;color:var(--ink3)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:0.4}
+.empty-text{font-size:13px;line-height:1.6}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#1a0e0e;color:#fff;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:500;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;max-width:calc(100% - 32px);text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{background:#166534}
+#toast.error{background:#991b1b}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.res-card,.clean-card,.inv-card{animation:fadeUp 0.2s ease both}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🏰</div>
+    <h2 class="login-title">Hostal La Plata</h2>
+    <p class="login-sub">Panel de administración</p>
+    <input type="password" class="login-input" id="pw" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+        <rect width="34" height="34" rx="9" fill="rgba(255,255,255,0.15)"/>
+        <!-- Torre izquierda -->
+        <rect x="4" y="8" width="6" height="18" rx="1" fill="white" opacity="0.9"/>
+        <rect x="4" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="7" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Torre derecha -->
+        <rect x="24" y="8" width="6" height="18" rx="1" fill="white" opacity="0.9"/>
+        <rect x="24" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="27" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Cuerpo central -->
+        <rect x="10" y="12" width="14" height="14" rx="1" fill="white" opacity="0.9"/>
+        <!-- Torre central -->
+        <rect x="13" y="8" width="8" height="6" rx="1" fill="white" opacity="0.9"/>
+        <rect x="13" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="16" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="19" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Puerta -->
+        <path d="M15 26 L15 20 Q17 18 19 20 L19 26 Z" fill="#8B0000"/>
+        <!-- Ventanas -->
+        <rect x="11" y="15" width="3" height="3" rx="1" fill="#8B0000"/>
+        <rect x="20" y="15" width="3" height="3" rx="1" fill="#8B0000"/>
+        <!-- Base -->
+        <rect x="3" y="26" width="28" height="2" rx="1" fill="white" opacity="0.6"/>
+      </svg>
+      <div>
+        <div class="topbar-title">Hostal La Plata</div>
+        <div class="topbar-sub">Oropesa · Admin</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="conn-dot off" id="conn-dot"></div>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item"><div class="stat-n">—</div><div class="stat-l">Total</div></div>
+    <div class="stat-item"><div class="stat-n warn">—</div><div class="stat-l">Pendiente</div></div>
+    <div class="stat-item"><div class="stat-n ok">—</div><div class="stat-l">Confirmada</div></div>
+    <div class="stat-item"><div class="stat-n" style="color:#93c5fd">—</div><div class="stat-l">Hoy</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('reservas')"><span class="tab-icon">📋</span>Activas</button>
+    <button class="tab" onclick="setTab('historial')"><span class="tab-icon">🗂️</span>Historial</button>
+    <button class="tab" onclick="setTab('nueva')"><span class="tab-icon">➕</span>Nueva</button>
+    <button class="tab" onclick="setTab('limpieza')"><span class="tab-icon">🧹</span>Limpieza</button>
+    <button class="tab" onclick="setTab('inventario')"><span class="tab-icon">🏠</span>Inventario</button>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <button class="fchip active" onclick="setFilter('all')">Todas</button>
+    <button class="fchip" onclick="setFilter('pendiente')">Pendientes</button>
+    <button class="fchip" onclick="setFilter('confirmada')">Confirmadas</button>
+    <button class="fchip" onclick="setFilter('cancelada')">Canceladas</button>
+    <div class="toolbar-spacer"></div>
+    <button class="refresh-btn" onclick="reloadData()">↻</button>
+  </div>
+
+  <div class="scroll" id="tab-content"></div>
+</div>
+
+<!-- CALENDAR OVERLAY -->
+<div class="cal-overlay" id="cal-overlay" style="display:none" onclick="if(event.target===this)closeCal()">
+  <div class="cal-sheet">
+    <div class="cal-header">
+      <div class="cal-title" id="cal-month-title">Junio 2026</div>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+        <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-weekdays">
+      <div class="cal-wd">Lu</div><div class="cal-wd">Ma</div><div class="cal-wd">Mi</div>
+      <div class="cal-wd">Ju</div><div class="cal-wd">Vi</div><div class="cal-wd">Sá</div><div class="cal-wd">Do</div>
+    </div>
+    <div class="cal-days" id="cal-days"></div>
+    <div style="display:flex;gap:12px;margin:10px 0 4px;font-size:10px;color:var(--ink3)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(185,28,28,0.08);border:1px solid #fca5a5;display:inline-block"></span>Sin disponibilidad</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Parcialmente ocupado</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--cr);display:inline-block"></span>Seleccionado</span>
+    </div>
+    <div class="cal-selected-info">
+      <div><div class="cal-sel-label">Entrada</div><div class="cal-sel-val" id="cal-ci-display">—</div></div>
+      <div style="color:var(--ink3);font-size:20px">→</div>
+      <div><div class="cal-sel-label">Salida</div><div class="cal-sel-val" id="cal-co-display">—</div></div>
+      <div><div class="cal-sel-label">Noches</div><div class="cal-sel-val" id="cal-nights-display">—</div></div>
+    </div>
+    <button class="cal-confirm" id="cal-confirm-btn" onclick="confirmCal()" disabled>Confirmar fechas</button>
+  </div>
+</div>
+
+</div>
+<!-- MODAL EDITAR RESERVA -->
+<div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEdit()">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div class="modal-title">Editar reserva</div>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div id="edit-form-content"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://lshxkfzsfscvwxqeesjr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaHhrZnpzZnNjdnd4cWVlc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjI2MzgsImV4cCI6MjA5NjE5ODYzOH0.Z1b5rwrvTA1M5P4xYrJ7uvhARp2yLQ0k-7ur51NQRwI';
+const ADMIN_PASS = 'hostal2025';
+const RESEND_KEY = 're_PL2ruKgq_6VVURKgB7S9NdQaD77DRXzrS';
+const ADMIN_EMAIL = 'jesusgarciaoropesa@gmail.com';
+const FROM_EMAIL = 'onboarding@resend.dev';
+const HOSTAL_NAME = 'Hostal La Plata';
+const PRICES = {doble:40,apartamento:60,familiar:75};
+const ROOM_LABELS = {doble:'Habitación doble',apartamento:'Apartamento con cocina',familiar:'Familiar / Hidromasaje'};
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const API = SUPABASE_URL + '/rest/v1';
+const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+
+let currentTab = 'reservas';
+let filterStatus = 'all';
+let reservations = [];
+let inventory = [];
+// Estado de limpieza independiente (local, hasta añadir columna en BD)
+let cleaningStatus = {};
+
+// ── API ──
+async function sbApi(path, method='GET', body=null){
+  const opts={method,headers:H};
+  if(body) opts.body=JSON.stringify(body);
+  const res=await fetch(API+path,opts);
+  if(!res.ok){const t=await res.text();throw new Error(t);}
+  const t=await res.text();
+  return t?JSON.parse(t):[];
+}
+
+// ── EMAIL via RESEND ──
+async function sendEmail(to, subject, html) {
+  try {
+    const res = await fetch('https://email-hostal.jesusgarciaoropesa.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: HOSTAL_NAME + ' <' + FROM_EMAIL + '>',
+        to: [to],
+        subject,
+        html
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Email error:', err);
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error('Email error:', e);
+    return false;
+  }
+}
+
+function emailNuevaReservaAdmin(r) {
+  const nights = Math.round((new Date(r.check_out) - new Date(r.check_in)) / 86400000);
+  return sendEmail(
+    ADMIN_EMAIL,
+    '🏰 Nueva reserva — ' + r.guest_name,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">🏰 Nueva reserva recibida</h1>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #e0d5c8;border-top:none;border-radius:0 0 8px 8px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Huésped</td><td style="padding:8px 0;font-weight:600">${r.guest_name}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Email</td><td style="padding:8px 0">${r.guest_email}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Teléfono</td><td style="padding:8px 0">${r.guest_phone || '—'}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Habitación</td><td style="padding:8px 0">${ROOM_LABELS[r.room_type] || r.room_type}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Entrada</td><td style="padding:8px 0">${fmtDate(r.check_in)}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Salida</td><td style="padding:8px 0">${fmtDate(r.check_out)}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Noches</td><td style="padding:8px 0">${nights}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Huéspedes</td><td style="padding:8px 0">${r.num_guests}</td></tr>
+          <tr><td style="padding:8px 0;color:#8a7070;font-size:13px">Total</td><td style="padding:8px 0;font-weight:700;color:#8B0000;font-size:16px">${r.total_price}€</td></tr>
+        </table>
+        <p style="margin-top:20px;font-size:13px;color:#4a3030">Accede al panel de administración para gestionar esta reserva y enviar el enlace de pago.</p>
+      </div>
+    </div>`
+  );
+}
+
+function emailConfirmacionHuesped(r) {
+  const nights = Math.round((new Date(r.check_out) - new Date(r.check_in)) / 86400000);
+  return sendEmail(
+    r.guest_email,
+    '✅ Reserva recibida — ' + HOSTAL_NAME,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">✅ Hemos recibido tu reserva</h1>
+        <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px">Te confirmaremos la disponibilidad en menos de 24h</p>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #e0d5c8;border-top:none;border-radius:0 0 8px 8px">
+        <p style="font-size:15px;color:#1a0e0e">Hola <strong>${r.guest_name}</strong>,</p>
+        <p style="font-size:14px;color:#4a3030;line-height:1.6">Gracias por elegir el Hostal La Plata. Hemos recibido tu solicitud de reserva y nos pondremos en contacto contigo para confirmarla y enviarte el enlace de pago.</p>
+        <div style="background:#f7f3ef;border-radius:8px;padding:16px;margin:20px 0">
+          <h3 style="margin:0 0 12px;color:#8B0000;font-size:14px;text-transform:uppercase;letter-spacing:0.1em">Resumen de tu reserva</h3>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px">Habitación</td><td style="padding:6px 0;font-weight:600;font-size:13px">${ROOM_LABELS[r.room_type] || r.room_type}</td></tr>
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px">Entrada</td><td style="padding:6px 0;font-size:13px">${fmtDate(r.check_in)}</td></tr>
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px">Salida</td><td style="padding:6px 0;font-size:13px">${fmtDate(r.check_out)}</td></tr>
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px">Noches</td><td style="padding:6px 0;font-size:13px">${nights}</td></tr>
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px">Huéspedes</td><td style="padding:6px 0;font-size:13px">${r.num_guests}</td></tr>
+            <tr><td style="padding:6px 0;color:#8a7070;font-size:13px;border-top:1px solid #e0d5c8;padding-top:10px">Total estimado</td><td style="padding:6px 0;font-weight:700;color:#8B0000;font-size:16px;border-top:1px solid #e0d5c8;padding-top:10px">${r.total_price}€</td></tr>
+          </table>
+        </div>
+        <p style="font-size:13px;color:#4a3030">¿Tienes alguna pregunta? Escríbenos por WhatsApp al <a href="https://wa.me/34637847114" style="color:#8B0000">+34 637 847 114</a> o responde a este email.</p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e0d5c8;font-size:11px;color:#8a7070">
+          <strong>Hostal La Plata</strong> · Antigua Ctra. Extremadura, km. 148,900 · 45560 Oropesa, Toledo<br>
+          Check-in: 14:30–21:30 · Check-out: antes de las 12:00
+        </div>
+      </div>
+    </div>`
+  );
+}
+
+function emailEnlacePago(r, link) {
+  return sendEmail(
+    r.guest_email,
+    '💳 Enlace de pago — ' + HOSTAL_NAME,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">💳 Tu enlace de pago</h1>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #e0d5c8;border-top:none;border-radius:0 0 8px 8px">
+        <p style="font-size:15px;color:#1a0e0e">Hola <strong>${r.guest_name}</strong>,</p>
+        <p style="font-size:14px;color:#4a3030;line-height:1.6">Tu reserva en el Hostal La Plata está confirmada. A continuación encontrarás el enlace para realizar el pago de <strong>${r.total_price}€</strong>.</p>
+        <div style="text-align:center;margin:28px 0">
+          <a href="${link}" style="background:#8B0000;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block">Realizar pago →</a>
+        </div>
+        <div style="background:#f7f3ef;border-radius:8px;padding:14px;font-size:13px;color:#4a3030">
+          <strong>${ROOM_LABELS[r.room_type]}</strong> · ${fmtDate(r.check_in)} → ${fmtDate(r.check_out)} · ${r.total_price}€
+        </div>
+        <p style="font-size:12px;color:#8a7070;margin-top:16px">Si tienes algún problema con el pago contáctanos por WhatsApp al <a href="https://wa.me/34637847114" style="color:#8B0000">+34 637 847 114</a></p>
+      </div>
+    </div>`
+  );
+}
+
+function emailEnlaceGlizzz(r, link) {
+  return sendEmail(
+    r.guest_email,
+    '🔑 Tu acceso al hostal — ' + HOSTAL_NAME,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">🔑 Tu acceso al hostal</h1>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #e0d5c8;border-top:none;border-radius:0 0 8px 8px">
+        <p style="font-size:15px;color:#1a0e0e">Hola <strong>${r.guest_name}</strong>,</p>
+        <p style="font-size:14px;color:#4a3030;line-height:1.6">¡Te esperamos! Aquí tienes tu enlace de acceso al hostal para tu estancia del <strong>${fmtDate(r.check_in)}</strong>.</p>
+        <div style="text-align:center;margin:28px 0">
+          <a href="${link}" style="background:#8B0000;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block">Acceder al hostal →</a>
+        </div>
+        <div style="background:#f7f3ef;border-radius:8px;padding:14px;font-size:13px;color:#4a3030">
+          <strong>Check-in:</strong> ${fmtDate(r.check_in)} a partir de las 14:30<br>
+          <strong>Check-out:</strong> ${fmtDate(r.check_out)} antes de las 12:00
+        </div>
+        <p style="font-size:12px;color:#8a7070;margin-top:16px">¿Necesitas ayuda? WhatsApp <a href="https://wa.me/34637847114" style="color:#8B0000">+34 637 847 114</a></p>
+      </div>
+    </div>`
+  );
+}
+
+function emailResena(r) {
+  return sendEmail(
+    r.guest_email,
+    '⭐ ¿Cómo fue tu estancia? — ' + HOSTAL_NAME,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+        <h1 style="color:#fff;margin:0;font-size:22px">⭐ ¿Cómo fue tu estancia?</h1>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #e0d5c8;border-top:none;border-radius:0 0 8px 8px">
+        <p style="font-size:15px;color:#1a0e0e">Hola <strong>${r.guest_name}</strong>,</p>
+        <p style="font-size:14px;color:#4a3030;line-height:1.6">Esperamos que tu estancia en el Hostal La Plata haya sido de tu agrado. Tu opinión es muy importante para nosotros y nos ayuda a seguir mejorando.</p>
+        <p style="font-size:14px;color:#4a3030;line-height:1.6">¿Podrías dejarnos una reseña en Google? Solo te llevará un minuto.</p>
+        <div style="text-align:center;margin:28px 0">
+          <a href="https://www.google.com/maps/search/Hostal+La+Plata+Oropesa" style="background:#8B0000;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block">Dejar reseña en Google ⭐</a>
+        </div>
+        <p style="font-size:13px;color:#4a3030">¿Tienes alguna sugerencia o comentario? Responde a este email, estaremos encantados de escucharte.</p>
+        <p style="font-size:13px;color:#4a3030">Esperamos verte pronto de nuevo en Oropesa. ¡Hasta la próxima!</p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e0d5c8;font-size:11px;color:#8a7070">
+          <strong>Hostal La Plata</strong> · Oropesa, Toledo · <a href="https://wa.me/34637847114" style="color:#8B0000">+34 637 847 114</a>
+        </div>
+      </div>
+    </div>`
+  );
+}
+
+// ── AUTH ──
+function doLogin(){
+  const pw=document.getElementById('pw').value;
+  if(pw===ADMIN_PASS){
+    document.getElementById('login-screen').style.display='none';
+    const ms=document.getElementById('main-screen');
+    ms.style.display='flex';ms.style.flexDirection='column';
+    document.getElementById('pw').value='';
+    loadAll();
+  } else {
+    document.getElementById('login-err').textContent='Contraseña incorrecta';
+    document.getElementById('pw').value='';
+  }
+}
+function doLogout(){
+  document.getElementById('main-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// ── DATA ──
+async function loadAll(){
+  try{
+    const [res,inv]=await Promise.all([
+      sbApi('/reservations?select=*&order=created_at.desc'),
+      sbApi('/room_inventory?select=*')
+    ]);
+    reservations=res;
+    inventory=inv.length?inv:[{room_type:'doble',units:3},{room_type:'apartamento',units:2},{room_type:'familiar',units:2}];
+    // Load cleaning status from Supabase (column cleaning_status)
+    reservations.forEach(r=>{
+      cleaningStatus[r.id]=(r.cleaning_status||'pendiente').toLowerCase();
+    });
+    renderStats();
+    renderTab();
+    setConn(true);
+  }catch(e){
+    setConn(false);
+    showToast('⚠️ Error al conectar','error');
+  }
+}
+async function reloadData(){await loadAll();showToast('✓ Actualizado');}
+function setConn(ok){
+  const d=document.getElementById('conn-dot');
+  d.classList.toggle('off',!ok);
+}
+
+// ── STATS ──
+function renderStats(){
+  const today=new Date().toISOString().split('T')[0];
+  const total=reservations.length;
+  const pend=reservations.filter(r=>r.status==='pendiente').length;
+  const conf=reservations.filter(r=>r.status==='confirmada').length;
+  const hoy=reservations.filter(r=>r.check_in===today||r.check_out===today).length;
+  document.getElementById('stats-bar').innerHTML=`
+    <div class="stat-item"><div class="stat-n">${total}</div><div class="stat-l">Total</div></div>
+    <div class="stat-item"><div class="stat-n warn">${pend}</div><div class="stat-l">Pendiente</div></div>
+    <div class="stat-item"><div class="stat-n ok">${conf}</div><div class="stat-l">Confirmada</div></div>
+    <div class="stat-item"><div class="stat-n" style="color:#93c5fd">${hoy}</div><div class="stat-l">Hoy</div></div>`;
+}
+
+// ── TABS ──
+function setTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['reservas','historial','nueva','limpieza','inventario'][i]===tab));
+  document.getElementById('toolbar').style.display=tab==='reservas'?'flex':'none';
+  renderTab();
+}
+function renderTab(){
+  const c=document.getElementById('tab-content');
+  if(currentTab==='reservas') c.innerHTML=renderReservations();
+  else if(currentTab==='historial') c.innerHTML=renderHistorial();
+  else if(currentTab==='nueva'){c.innerHTML=renderNuevaForm();initNewForm();}
+  else if(currentTab==='limpieza') c.innerHTML=renderLimpieza();
+  else if(currentTab==='inventario') c.innerHTML=renderInventario();
+}
+function setFilter(s){
+  filterStatus=s;
+  document.querySelectorAll('.fchip').forEach((b,i)=>b.classList.toggle('active',['all','pendiente','confirmada','cancelada'][i]===s));
+  renderTab();
+}
+
+// ── RESERVATIONS ──
+function nights(ci,co){return Math.round((new Date(co)-new Date(ci))/86400000);}
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+
+function renderReservations(){
+  const today=new Date().toISOString().split('T')[0];
+  let list=filterStatus==='all'?reservations:reservations.filter(r=>r.status===filterStatus);
+  if(!list.length) return`<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No hay reservas${filterStatus!=='all'?' con este filtro':''}</div></div>`;
+  return list.map((r,i)=>{
+    const n=nights(r.check_in,r.check_out);
+    const isToday=r.check_in===today||r.check_out===today;
+    const urgent=r.status==='pendiente'&&isToday;
+    const pc=r.status==='pendiente'?'pill-p':r.status==='confirmada'?'pill-c':'pill-x';
+    return`<div class="res-card${urgent?' urgent':''}" style="animation-delay:${i*0.04}s">
+      <div class="res-top">
+        <div style="flex:1;min-width:0">
+          <div class="res-name">${r.guest_name}</div>
+          <div class="res-room-label">${ROOM_LABELS[r.room_type]||r.room_type}</div>
+          <div class="res-dates">
+            <span>${fmtDate(r.check_in)}</span>
+            <span style="color:var(--ink3)">→</span>
+            <span>${fmtDate(r.check_out)}</span>
+            <span class="res-nights">${n}n</span>
+            ${isToday?'<span class="today-badge">HOY</span>':''}
+          </div>
+        </div>
+        <span class="pill ${pc}">${r.status}</span>
+      </div>
+      <div class="res-meta">
+        <div class="res-field"><strong>${r.total_price||'—'}€</strong> total</div>
+        <div class="res-field">${r.num_guests} huésped${r.num_guests>1?'es':''}</div>
+        ${r.guest_email?`<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.guest_email}</div>`:''}
+        ${r.guest_phone?`<div class="res-field" style="grid-column:span 2">${r.guest_phone}</div>`:''}
+      </div>
+      <div class="res-contact">
+        ${r.guest_phone?`<button class="contact-btn wa" onclick="whatsapp('${r.guest_phone}','${r.guest_name}')">📱 WhatsApp</button>`:''}
+        ${r.guest_email?`<button class="contact-btn mail" onclick="window.open('mailto:${r.guest_email}')">✉️ Email</button>`:''}
+      </div>
+      <div class="res-links">
+        <span class="link-label">💳</span>
+        <input class="link-input" id="pay-${r.id}" value="${r.payment_link||''}" placeholder="Enlace de pago…">
+        ${r.payment_link?'<span class="link-saved">✓ enviado</span>':''}
+        <button class="link-save" onclick="saveLink('${r.id}','payment')">Enviar</button>
+      </div>
+      <div class="res-links">
+        <span class="link-label">🔑</span>
+        <input class="link-input" id="glz-${r.id}" value="${r.glizzz_link||''}" placeholder="Enlace Glizzz…">
+        ${r.glizzz_link?'<span class="link-saved">✓ enviado</span>':''}
+        <button class="link-save" onclick="saveLink('${r.id}','glizzz')">Enviar</button>
+      </div>
+      <div class="res-actions">
+        ${r.status!=='confirmada'?`<button class="act-btn ok" onclick="quickStatus('${r.id}','confirmada')">✓ Confirmar</button>`:''}
+        ${r.status!=='cancelada'?`<button class="act-btn danger" onclick="quickStatus('${r.id}','cancelada')">✗ Cancelar</button>`:''}
+        <button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('${r.id}')">✏️</button>
+        <button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('${r.id}','${r.guest_name}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('')+'<div style="height:20px"></div>';
+}
+
+async function quickStatus(id,status){
+  try{
+    await sbApi('/reservations?id=eq.'+id,'PATCH',{status});
+    await loadAll();
+    showToast('✓ Reserva '+status,'success');
+  }catch(e){showToast('⚠️ Error','error');}
+}
+async function saveLink(id,type){
+  const val=type==='payment'
+    ?document.getElementById('pay-'+id).value.trim()
+    :document.getElementById('glz-'+id).value.trim();
+  if(!val){showToast('⚠️ Introduce un enlace');return;}
+  try{
+    const fields=type==='payment'?{payment_link:val}:{glizzz_link:val};
+    await sbApi('/reservations?id=eq.'+id,'PATCH',fields);
+    await loadAll();
+    // Enviar email al huésped
+    const r=reservations.find(x=>x.id===id);
+    if(r){
+      const ok = type==='payment'
+        ? await emailEnlacePago(r, val)
+        : await emailEnlaceGlizzz(r, val);
+      showToast(ok?'✓ Enlace guardado y email enviado':'✓ Enlace guardado (email fallido)','success');
+    } else {
+      showToast('✓ Enlace guardado','success');
+    }
+  }catch(e){showToast('⚠️ Error al guardar','error');}
+}
+async function deleteRes(id,name){
+  if(!confirm('¿Eliminar la reserva de '+name+'?'))return;
+  try{
+    await sbApi('/reservations?id=eq.'+id,'DELETE');
+    await loadAll();
+    showToast('✓ Eliminada');
+  }catch(e){showToast('⚠️ Error','error');}
+}
+function whatsapp(phone,name){
+  const clean=phone.replace(/\D/g,'');
+  const prefix=clean.startsWith('34')?'':'+34';
+  const msg=encodeURIComponent('Hola '+name+', le contactamos desde el Hostal La Plata.');
+  window.open('https://wa.me/'+prefix+clean+'?text='+msg,'_blank');
+}
+
+// ── CALENDAR ──
+let calYear,calMonth,calStart=null,calEnd=null,calSelecting=false,calBlockedDates={};
+
+async function openCal(){
+  const now=new Date();
+  calYear=now.getFullYear();calMonth=now.getMonth();
+  calStart=null;calEnd=null;calSelecting=false;
+  // Load blocked dates for selected room
+  const room=document.getElementById('n-room')?.value;
+  calBlockedDates={};
+  if(room){
+    try{
+      const inv=inventory.find(i=>i.room_type===room);
+      const maxUnits=inv?inv.units:1;
+      // Get all active reservations for this room
+      const resv=await sbApi('/reservations?select=check_in,check_out&room_type=eq.'+room+'&status=neq.cancelada');
+      // For each day in next 18 months, count overlapping reservations
+      const start=new Date();start.setDate(1);
+      const end=new Date();end.setMonth(end.getMonth()+18);
+      for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+        const ds=d.toISOString().split('T')[0];
+        const count=resv.filter(r=>r.check_in<=ds&&r.check_out>ds).length;
+        if(count>=maxUnits) calBlockedDates[ds]='blocked';
+        else if(count>0) calBlockedDates[ds]='partial';
+      }
+    }catch(e){console.error('Error loading blocked dates',e);}
+  }
+  renderCal();
+  document.getElementById('cal-overlay').style.display='flex';
+}
+function closeCal(){document.getElementById('cal-overlay').style.display='none';}
+function confirmCal(){
+  if(calStart&&calEnd){
+    newFormDates={ci:calStart,co:calEnd};
+    updateDateDisplay();
+    closeCal();
+    calcPrice();
+  }
+}
+function calNav(dir){
+  calMonth+=dir;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  renderCal();
+}
+function renderCal(){
+  document.getElementById('cal-month-title').textContent=MONTHS_ES[calMonth]+' '+calYear;
+  const today=new Date().toISOString().split('T')[0];
+  const firstDay=new Date(calYear,calMonth,1);
+  const lastDay=new Date(calYear,calMonth+1,0);
+  let startDow=firstDay.getDay();
+  startDow=startDow===0?6:startDow-1;
+  let html='';
+  for(let i=0;i<startDow;i++) html+=`<button class="cal-day other-month" disabled></button>`;
+  for(let d=1;d<=lastDay.getDate();d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isPast=dateStr<today;
+    const isToday=dateStr===today;
+    const isStart=dateStr===calStart;
+    const isEnd=dateStr===calEnd;
+    const inRange=calStart&&calEnd&&dateStr>calStart&&dateStr<calEnd;
+    const blockState=calBlockedDates[dateStr];
+    const isBlocked=blockState==='blocked';
+    const isPartial=blockState==='partial';
+    let cls='cal-day';
+    if(isToday&&!isStart&&!isEnd) cls+=' today';
+    if(isStart) cls+=' selected-start';
+    if(isEnd) cls+=' selected-end';
+    if(inRange) cls+=' in-range';
+    if(isBlocked&&!isStart&&!isEnd) cls+=' blocked';
+    else if(isPartial&&!isStart&&!isEnd) cls+=' partial';
+    const disabled=isPast||isBlocked;
+    html+=`<button class="${cls}" ${disabled?'disabled':''} onclick="calClick('${dateStr}')">${d}</button>`;
+  }
+  document.getElementById('cal-days').innerHTML=html;
+  // Update info
+  document.getElementById('cal-ci-display').textContent=calStart?fmtDate(calStart):'—';
+  document.getElementById('cal-co-display').textContent=calEnd?fmtDate(calEnd):'—';
+  if(calStart&&calEnd){
+    const n=nights(calStart,calEnd);
+    document.getElementById('cal-nights-display').textContent=n>0?n+'':'—';
+    document.getElementById('cal-confirm-btn').disabled=n<=0;
+  } else {
+    document.getElementById('cal-nights-display').textContent='—';
+    document.getElementById('cal-confirm-btn').disabled=true;
+  }
+}
+function calClick(date){
+  if(!calStart||calSelecting===false){
+    calStart=date;calEnd=null;calSelecting=true;
+  } else {
+    if(date<=calStart){calStart=date;calEnd=null;}
+    else{calEnd=date;calSelecting=false;}
+  }
+  renderCal();
+}
+
+// ── NUEVA RESERVA ──
+let newFormDates={ci:null,co:null};
+
+function initNewForm(){newFormDates={ci:null,co:null};}
+
+function renderNuevaForm(){
+  return`<div class="form-wrap">
+    <div class="form-section">Habitación y fechas</div>
+    <div class="form-group">
+      <label class="form-label">Tipo de habitación</label>
+      <select class="form-input form-select" id="n-room" onchange="calcPrice();if(document.getElementById('cal-overlay').style.display==='flex')openCal()">
+        <option value="doble">Habitación doble — 40€/noche</option>
+        <option value="apartamento">Apartamento con cocina — 60€/noche</option>
+        <option value="familiar">Familiar / Hidromasaje — 75€/noche</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fechas de estancia</label>
+      <div class="date-range-display empty" id="date-display" onclick="openCal()">
+        <span id="date-display-text">Toca para seleccionar fechas</span>
+        <span>📅</span>
+      </div>
+    </div>
+    <div class="price-preview" id="price-preview"></div>
+    <div class="form-group">
+      <label class="form-label">Nº huéspedes</label>
+      <select class="form-input form-select" id="n-guests">
+        <option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+    </div>
+    <div class="form-section">Datos del huésped</div>
+    <div class="form-group">
+      <label class="form-label">Nombre completo</label>
+      <input type="text" class="form-input" id="n-name" placeholder="Nombre y apellidos" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input type="tel" class="form-input" id="n-phone" placeholder="600 000 000" inputmode="tel" autocomplete="tel">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="n-email" placeholder="correo@ejemplo.com" inputmode="email" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio total (€) <span style="font-weight:400;color:var(--ink3)">(opcional, se calcula solo)</span></label>
+      <input type="number" class="form-input" id="n-price" placeholder="Se calcula automáticamente" inputmode="numeric">
+    </div>
+    <button class="btn-primary" id="n-btn" onclick="createReservation()">Crear reserva confirmada</button>
+    <div style="height:24px"></div>
+  </div>`;
+}
+
+function updateDateDisplay(){
+  const el=document.getElementById('date-display');
+  const txt=document.getElementById('date-display-text');
+  if(!el||!txt)return;
+  if(newFormDates.ci&&newFormDates.co){
+    const n=nights(newFormDates.ci,newFormDates.co);
+    el.classList.remove('empty');
+    txt.innerHTML=`<strong>${fmtDate(newFormDates.ci)}</strong> → <strong>${fmtDate(newFormDates.co)}</strong> <span style="background:var(--cr);color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:4px">${n}n</span>`;
+  } else {
+    el.classList.add('empty');
+    txt.textContent='Toca para seleccionar fechas';
+  }
+}
+async function calcPrice(){
+  if(!newFormDates.ci||!newFormDates.co)return;
+  const room=document.getElementById('n-room')?.value;
+  if(!room)return;
+  const n=nights(newFormDates.ci,newFormDates.co);
+  const total=n*PRICES[room];
+  const prev=document.getElementById('price-preview');
+  if(prev&&n>0){
+    prev.style.display='block';
+    prev.style.background='rgba(139,0,0,0.06)';
+    prev.style.borderColor='rgba(139,0,0,0.15)';
+    // Comprobar disponibilidad en tiempo real
+    try{
+      const avail=await checkAvailability(room,newFormDates.ci,newFormDates.co);
+      const free=avail.available-avail.overlapping;
+      const availHtml=avail.ok
+        ? `<span style="color:var(--ok);font-weight:600">✓ ${free} unidad${free!==1?'es':''} libre${free!==1?'s':''}</span>`
+        : `<span style="color:var(--danger);font-weight:600">❌ Sin disponibilidad (${avail.overlapping}/${avail.available} ocupadas)</span>`;
+      prev.innerHTML=`${n} noche${n>1?'s':''} · <strong>${total}€ total</strong> · ${availHtml}`;
+    }catch{
+      prev.innerHTML=`${n} noche${n>1?'s':''} · <strong>${total}€ total</strong>`;
+    }
+    const np=document.getElementById('n-price');
+    if(np&&!np.value)np.value=total;
+  }
+  updateDateDisplay();
+}
+
+// Override confirmCal to also update display
+const _origConfirm=window.confirmCal||(()=>{});
+window.confirmCal=function(){
+  if(calStart&&calEnd&&nights(calStart,calEnd)>0){
+    newFormDates={ci:calStart,co:calEnd};
+    updateDateDisplay();
+    closeCal();
+    calcPrice();
+  }
+};
+
+async function checkAvailability(room, ci, co){
+  // Busca reservas activas del mismo tipo que se solapen con las fechas
+  const all = await sbApi(
+    '/reservations?select=id,check_in,check_out,room_type,status' +
+    '&room_type=eq.' + room +
+    '&status=neq.cancelada'
+  );
+  // Solapamiento: reserva existente solapa si su check_in < co Y su check_out > ci
+  const overlapping = all.filter(r => r.check_in < co && r.check_out > ci);
+  const inv = inventory.find(i => i.room_type === room);
+  const available = inv ? inv.units : 1;
+  return { overlapping: overlapping.length, available, ok: overlapping.length < available };
+}
+
+async function createReservation(){
+  const name=document.getElementById('n-name').value.trim();
+  const email=document.getElementById('n-email').value.trim();
+  const phone=document.getElementById('n-phone').value.trim();
+  const room=document.getElementById('n-room').value;
+  const guests=document.getElementById('n-guests').value;
+  const customPrice=document.getElementById('n-price').value;
+  if(!name||!email||!newFormDates.ci||!newFormDates.co){
+    showToast('⚠️ Nombre, email y fechas son obligatorios');return;
+  }
+  const n=nights(newFormDates.ci,newFormDates.co);
+  if(n<=0){showToast('⚠️ Las fechas no son correctas');return;}
+
+  const btn=document.getElementById('n-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Comprobando…';
+
+  // Comprobar disponibilidad
+  try{
+    const avail = await checkAvailability(room, newFormDates.ci, newFormDates.co);
+    if(!avail.ok){
+      showToast('⚠️ Sin disponibilidad: '+avail.overlapping+' de '+avail.available+' unidades ocupadas','error');
+      btn.disabled=false;btn.textContent='Crear reserva confirmada';
+      // Mostrar aviso detallado
+      const prev=document.getElementById('price-preview');
+      if(prev){
+        prev.style.display='block';
+        prev.style.background='rgba(185,28,28,0.08)';
+        prev.style.borderColor='rgba(185,28,28,0.3)';
+        prev.innerHTML='❌ <strong>Sin disponibilidad</strong> para estas fechas<br><small style="color:var(--ink3)">' + avail.overlapping + ' reserva' + (avail.overlapping>1?'s':'') + ' activa' + (avail.overlapping>1?'s':'') + ' · ' + avail.available + ' unidad' + (avail.available>1?'es':'') + ' en inventario</small>';
+      }
+      return;
+    }
+  }catch(e){
+    // Si falla la comprobación, permitir continuar con aviso
+    showToast('⚠️ No se pudo verificar disponibilidad','error');
+    btn.disabled=false;btn.textContent='Crear reserva confirmada';
+    return;
+  }
+
+  btn.innerHTML='<span class="spinner"></span>Creando…';
+  const total=customPrice?parseFloat(customPrice):n*PRICES[room];
+  try{
+    await sbApi('/reservations','POST',{
+      room_type:room,guest_name:name,guest_email:email,
+      guest_phone:phone||'',check_in:newFormDates.ci,check_out:newFormDates.co,
+      num_guests:parseInt(guests),total_price:total,status:'confirmada'
+    });
+    showToast('✓ Reserva creada','success');
+    // Capture dates before clearing
+    const emailData={room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:newFormDates.ci||'',check_out:newFormDates.co||'',num_guests:parseInt(guests),total_price:total};
+    newFormDates={ci:null,co:null};
+    calStart=null;calEnd=null;
+    await loadAll();
+    // Enviar emails
+    Promise.all([
+      emailNuevaReservaAdmin(emailData),
+      emailConfirmacionHuesped(emailData)
+    ]).then(([a,h])=>{
+      if(a&&h) showToast('✓ Emails enviados al admin y huésped');
+      else if(a) showToast('✓ Email enviado al admin');
+      else if(h) showToast('✓ Email enviado al huésped');
+    });
+    setTab('reservas');
+  }catch(e){
+    showToast('⚠️ Error al crear la reserva','error');
+    btn.disabled=false;btn.textContent='Crear reserva confirmada';
+  }
+}
+
+// ── HISTORIAL ──
+function renderHistorial(){
+  const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
+  // Reservas pasadas (checkout < ayer) o canceladas
+  const list=reservations.filter(r=>r.check_out<yesterday||r.status==='cancelada')
+    .sort((a,b)=>b.check_out.localeCompare(a.check_out));
+  if(!list.length) return'<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en el historial</div></div>';
+  return list.map(function(r,i){
+    var n=nights(r.check_in,r.check_out);
+    var pc=r.status==='pendiente'?'pill-p':r.status==='confirmada'?'pill-c':'pill-x';
+    var html='<div class="res-card" style="opacity:0.85;animation-delay:'+i*0.04+'s">';
+    html+='<div class="res-top">';
+    html+='<div style="flex:1;min-width:0">';
+    html+='<div class="res-name">'+r.guest_name+'</div>';
+    html+='<div class="res-room-label">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
+    html+='<div class="res-dates"><span>'+fmtDate(r.check_in)+'</span><span style="color:var(--ink3)">→</span><span>'+fmtDate(r.check_out)+'</span><span class="res-nights">'+n+'n</span></div>';
+    html+='</div>';
+    html+='<span class="pill '+pc+'">'+r.status+'</span>';
+    html+='</div>';
+    html+='<div class="res-meta">';
+    html+='<div class="res-field"><strong>'+(r.total_price||'—')+'€</strong> total</div>';
+    html+='<div class="res-field">'+r.num_guests+' huésped'+(r.num_guests>1?'es':'')+'</div>';
+    if(r.guest_email) html+='<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.guest_email+'</div>';
+    if(r.guest_phone) html+='<div class="res-field" style="grid-column:span 2">'+r.guest_phone+'</div>';
+    html+='</div>';
+    html+='<div class="res-actions">';
+    html+='<button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('+''''+r.id+''''+')">✏️ Editar</button>';
+    html+='<button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('+''''+r.id+''''+','+''''+r.guest_name+''''+')">🗑</button>';
+    html+='</div></div>';
+    return html;
+  }).join('')+'<div style="height:20px"></div>';
+}
+
+// ── LIMPIEZA (estado independiente) ──
+const CLEAN_STATES=['pendiente','en limpieza','finalizada'];
+const CLEAN_DOTS={pendiente:'dot-pending','en limpieza':'dot-cleaning',finalizada:'dot-done'};
+
+function renderLimpieza(){
+  const today=new Date().toISOString().split('T')[0];
+  const active=reservations.filter(r=>r.status!=='cancelada').sort((a,b)=>a.check_out.localeCompare(b.check_out));
+  if(!active.length)return'<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones que gestionar</div></div>';
+
+  const pending=active.filter(r=>(cleaningStatus[r.id]||'pendiente')!=='finalizada');
+  const done=active.filter(r=>(cleaningStatus[r.id]||'pendiente')==='finalizada');
+
+  let html='';
+  if(pending.length){
+    html+=`<div class="clean-section">Pendientes (${pending.length})</div>`;
+    html+=pending.map((r,i)=>{
+      const cs=cleaningStatus[r.id]||'pendiente';
+      const isToday=r.check_out===today;
+      const isPast=r.check_out<today;
+      return`<div class="clean-card${isPast?' urgent':''}" style="animation-delay:${i*0.04}s">
+        <div class="clean-status-dot ${CLEAN_DOTS[cs]||'dot-pending'}"></div>
+        <div class="clean-info">
+          <div class="clean-room">${ROOM_LABELS[r.room_type]||r.room_type}</div>
+          <div class="clean-meta">${r.guest_name} · Checkout: ${fmtDate(r.check_out)}${isToday?' · <strong style="color:var(--warn)">HOY</strong>':''}${isPast?' · <strong style="color:var(--danger)">VENCIDO</strong>':''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <select class="clean-sel" onchange="updateCleaning('${r.id}',this.value)">
+            ${CLEAN_STATES.map(s=>`<option value="${s}" ${cs===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+          ${cs==='finalizada'?`<button style="background:#fef3c7;border:1px solid #fcd34d;color:#92600a;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap" onclick="sendReviewEmail('${r.id}')">⭐ Pedir reseña</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(done.length){
+    html+=`<div class="clean-section" style="margin-top:12px">Finalizadas (${done.length})</div>`;
+    html+=done.map((r,i)=>`
+      <div class="clean-card done" style="animation-delay:${i*0.04}s">
+        <div class="clean-status-dot dot-done"></div>
+        <div class="clean-info">
+          <div class="clean-room">${ROOM_LABELS[r.room_type]||r.room_type}</div>
+          <div class="clean-meta">${r.guest_name} · Checkout: ${fmtDate(r.check_out)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <select class="clean-sel" onchange="updateCleaning('${r.id}',this.value)">
+            ${CLEAN_STATES.map(s=>`<option value="${s}" ${s==='finalizada'?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+          <button style="background:#fef3c7;border:1px solid #fcd34d;color:#92600a;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap" onclick="sendReviewEmail('${r.id}')">⭐ Pedir reseña</button>
+        </div>
+      </div>`).join('');
+  }
+  return html+'<div style="height:20px"></div>';
+}
+
+async function updateCleaning(id,status){
+  const s=status.toLowerCase();
+  cleaningStatus[id]=s;
+  renderTab();
+  // Save to Supabase
+  try{
+    await sbApi('/reservations?id=eq.'+id,'PATCH',{cleaning_status:s});
+  }catch(e){console.error('Error saving cleaning status',e);}
+  showToast('✓ Limpieza actualizada');
+}
+
+// ── REVIEW EMAIL ──
+async function sendReviewEmail(id){
+  const r=reservations.find(x=>x.id===id);
+  if(!r){showToast('⚠️ Reserva no encontrada');return;}
+  const ok=await emailResena(r);
+  showToast(ok?'⭐ Email de reseña enviado':'⚠️ Error al enviar el email',ok?'success':'error');
+}
+
+// ── INVENTARIO ──
+function renderInventario(){
+  const labels={doble:'Habitación doble',apartamento:'Apartamento con cocina',familiar:'Familiar / Hidromasaje'};
+  const prices={doble:'40€/noche',apartamento:'60€/noche',familiar:'75€/noche'};
+  const maxU={doble:10,apartamento:5,familiar:5};
+  return inventory.map((inv,i)=>{
+    const pct=Math.min(100,Math.round((inv.units/(maxU[inv.room_type]||5))*100));
+    return`<div class="inv-card" style="animation-delay:${i*0.06}s">
+      <div class="inv-top">
+        <div>
+          <div class="inv-name">${labels[inv.room_type]||inv.room_type}</div>
+          <div class="inv-price">${prices[inv.room_type]||''}</div>
+        </div>
+        <div class="inv-counter">
+          <button class="inv-btn" onclick="changeInv('${inv.room_type}',-1)">−</button>
+          <span class="inv-num" id="inv-${inv.room_type}">${inv.units}</span>
+          <button class="inv-btn" onclick="changeInv('${inv.room_type}',1)">+</button>
+        </div>
+      </div>
+      <div class="inv-bar"><div class="inv-bar-fill" id="bar-${inv.room_type}" style="width:${pct}%"></div></div>
+      <div class="inv-sub">${inv.units} unidad${inv.units!==1?'es':''} disponible${inv.units!==1?'s':''}</div>
+    </div>`;
+  }).join('')+'<div style="height:20px"></div>';
+}
+async function changeInv(room_type,delta){
+  const item=inventory.find(i=>i.room_type===room_type);
+  if(!item)return;
+  const nv=Math.max(0,item.units+delta);
+  item.units=nv;
+  document.getElementById('inv-'+room_type).textContent=nv;
+  const max={doble:10,apartamento:5,familiar:5}[room_type]||5;
+  document.getElementById('bar-'+room_type).style.width=Math.min(100,Math.round(nv/max*100))+'%';
+  try{
+    await sbApi('/room_inventory?room_type=eq.'+room_type,'PATCH',{units:nv,updated_at:new Date().toISOString()});
+    showToast('✓ Inventario actualizado');
+  }catch(e){showToast('⚠️ Error','error');}
+}
+
+// ── EDITAR RESERVA ──
+function openEdit(id){
+  const r=reservations.find(x=>x.id===id);
+  if(!r)return;
+  document.getElementById('edit-form-content').innerHTML=`
+    <div class="form-group">
+      <label class="form-label">Tipo de habitación</label>
+      <select class="form-input form-select" id="e-room">
+        <option value="doble" ${r.room_type==='doble'?'selected':''}>Habitación doble — 40€/noche</option>
+        <option value="apartamento" ${r.room_type==='apartamento'?'selected':''}>Apartamento con cocina — 60€/noche</option>
+        <option value="familiar" ${r.room_type==='familiar'?'selected':''}>Familiar / Hidromasaje — 75€/noche</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Entrada</label>
+        <input type="date" class="form-input" id="e-ci" value="${r.check_in}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Salida</label>
+        <input type="date" class="form-input" id="e-co" value="${r.check_out}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre completo</label>
+      <input type="text" class="form-input" id="e-name" value="${r.guest_name}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input type="tel" class="form-input" id="e-phone" value="${r.guest_phone||''}" inputmode="tel">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="e-email" value="${r.guest_email}" inputmode="email">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Huéspedes</label>
+        <select class="form-input form-select" id="e-guests">
+          ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${r.num_guests===n?'selected':''}>${n}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio total (€)</label>
+        <input type="number" class="form-input" id="e-price" value="${r.total_price||''}" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Estado</label>
+      <select class="form-input form-select" id="e-status">
+        <option value="pendiente" ${r.status==='pendiente'?'selected':''}>Pendiente</option>
+        <option value="confirmada" ${r.status==='confirmada'?'selected':''}>Confirmada</option>
+        <option value="cancelada" ${r.status==='cancelada'?'selected':''}>Cancelada</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="e-btn" onclick="saveEdit('${r.id}')">Guardar cambios</button>
+    <div style="height:16px"></div>
+  `;
+  document.getElementById('edit-modal').style.display='flex';
+}
+
+function closeEdit(){
+  document.getElementById('edit-modal').style.display='none';
+}
+
+async function saveEdit(id){
+  const room=document.getElementById('e-room').value;
+  const ci=document.getElementById('e-ci').value;
+  const co=document.getElementById('e-co').value;
+  const name=document.getElementById('e-name').value.trim();
+  const phone=document.getElementById('e-phone').value.trim();
+  const email=document.getElementById('e-email').value.trim();
+  const guests=document.getElementById('e-guests').value;
+  const price=document.getElementById('e-price').value;
+  const status=document.getElementById('e-status').value;
+  if(!name||!email||!ci||!co){showToast('⚠️ Rellena todos los campos');return;}
+  if(new Date(co)<=new Date(ci)){showToast('⚠️ La salida debe ser posterior a la entrada');return;}
+  const btn=document.getElementById('e-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Guardando…';
+  const nights=Math.round((new Date(co)-new Date(ci))/86400000);
+  const total=price?parseFloat(price):nights*PRICES[room];
+  try{
+    await sbApi('/reservations?id=eq.'+id,'PATCH',{
+      room_type:room,guest_name:name,guest_email:email,
+      guest_phone:phone||'',check_in:ci,check_out:co,
+      num_guests:parseInt(guests),total_price:total,status
+    });
+    showToast('✓ Reserva actualizada','success');
+    closeEdit();
+    await loadAll();
+  }catch(e){
+    showToast('⚠️ Error al guardar','error');
+    btn.disabled=false;btn.textContent='Guardar cambios';
+  }
+}
+
+// ── TOAST ──
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(type?' '+type:'');
+  setTimeout(()=>t.className='',2500);
+}
+
+// ── INIT ──
+document.getElementById('toolbar').style.display='flex';
+document.getElementById('pw').focus();
+</script>
+</body>
+</html>
