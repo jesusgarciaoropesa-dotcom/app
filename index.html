@@ -367,8 +367,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <div id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://hsgmamvtcefpqlkclgau.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzZ21hbXZ0Y2VmcHFsa2NsZ2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDk0MjgsImV4cCI6MjA5NTcyNTQyOH0.dku-Yt4UcmMFrER9kJCtP69vGxSvVGflx1LpXxyLahc';
+const SUPABASE_URL = 'https://lshxkfzsfscvwxqeesjr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaHhrZnpzZnNjdnd4cWVlc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjI2MzgsImV4cCI6MjA5NjE5ODYzOH0.Z1b5rwrvTA1M5P4xYrJ7uvhARp2yLQ0k-7ur51NQRwI';
 const ADMIN_PASS = 'hostal2025';
 const CLEANING_PASS = 'limpieza2025';
 let userRole = 'admin'; // 'admin' or 'cleaning'
@@ -518,14 +518,13 @@ async function loadCleaning() {
 }
 function renderCleaningView() {
   var today = new Date().toISOString().split('T')[0];
+  var tomorrow = new Date(Date.now()+86400000).toISOString().split('T')[0];
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  // Show: checkouts from yesterday onwards, exclude finalized from yesterday
+
   var list = reservations.filter(function(r) {
     if(r.status === 'cancelada') return false;
     var cs = (r.cleaning_status || 'pendiente').toLowerCase();
-    // Finalizadas de ayer o antes -> no mostrar
     if(cs === 'finalizada' && r.check_out <= yesterday) return false;
-    // Checkouts desde ayer en adelante
     return r.check_out >= yesterday;
   }).sort(function(a,b){ return a.check_out.localeCompare(b.check_out); });
 
@@ -534,27 +533,48 @@ function renderCleaningView() {
     c.innerHTML = '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones pendientes</div></div>';
     return;
   }
-  c.innerHTML = list.map(function(r, i) {
+
+  // Split into sections
+  var vencidas = list.filter(function(r){ return r.check_out < today && (r.cleaning_status||'pendiente').toLowerCase()!=='finalizada'; });
+  var hoy = list.filter(function(r){ return r.check_out === today; });
+  var manana = list.filter(function(r){ return r.check_out === tomorrow; });
+  var resto = list.filter(function(r){ return r.check_out > tomorrow && (r.cleaning_status||'pendiente').toLowerCase()!=='finalizada'; });
+  var finalizadas = list.filter(function(r){ return (r.cleaning_status||'pendiente').toLowerCase() === 'finalizada'; });
+
+  function buildCard(r, i) {
     var cs = (r.cleaning_status || 'pendiente').toLowerCase();
     cleaningStatus[r.id] = cs;
-    var isToday = r.check_out === today;
     var isPast = r.check_out < today;
     var dot = cs==='finalizada'?'dot-done':cs==='en limpieza'?'dot-cleaning':'dot-pending';
     var card = '<div class="clean-card'+(isPast&&cs!=='finalizada'?' urgent':'')+'" style="animation-delay:'+i*0.04+'s">';
     card += '<div class="clean-status-dot '+dot+'"></div>';
     card += '<div class="clean-info">';
     card += '<div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-    card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out);
-    if(isToday) card += ' · <strong style="color:var(--warn)">HOY</strong>';
-    if(isPast&&cs!=='finalizada') card += ' · <strong style="color:var(--danger)">VENCIDO</strong>';
-    card += '</div></div>';
+    card += '<div class="clean-meta">'+r.guest_name+'</div>';
+    card += '</div>';
     card += '<select class="clean-sel" data-id="'+r.id+'" onchange="updateCleaningRole(this.dataset.id,this.value)">';
     CLEAN_STATES.forEach(function(s){
       card += '<option value="'+s+'"'+(cs===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>';
     });
     card += '</select></div>';
     return card;
-  }).join('') + '<div style="height:20px"></div>';
+  }
+
+  function buildSection(title, color, emoji, items) {
+    if(!items.length) return '';
+    var html = '<div style="padding:10px 12px 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:'+color+'">';
+    html += emoji + ' ' + title + ' (' + items.length + ')</div>';
+    html += items.map(function(r,i){ return buildCard(r,i); }).join('');
+    return html;
+  }
+
+  c.innerHTML = 
+    buildSection('Vencidas', 'var(--danger)', '🔴', vencidas) +
+    buildSection('Hoy', 'var(--warn)', '🟠', hoy) +
+    buildSection('Mañana', '#2563eb', '🔵', manana) +
+    buildSection('Próximas', 'var(--ink3)', '⚪', resto) +
+    buildSection('Finalizadas', 'var(--ok)', '✅', finalizadas) +
+    '<div style="height:20px"></div>';
 }
 async function updateCleaningRole(id, status) {
   var s = status.toLowerCase();
