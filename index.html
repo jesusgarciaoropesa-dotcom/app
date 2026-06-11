@@ -219,10 +219,34 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <div id="main-screen">
   <div class="topbar">
     <div class="topbar-left">
-      <span class="topbar-icon">🏰</span>
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+        <rect width="34" height="34" rx="9" fill="rgba(255,255,255,0.15)"/>
+        <!-- Torre izquierda -->
+        <rect x="4" y="8" width="6" height="18" rx="1" fill="white" opacity="0.9"/>
+        <rect x="4" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="7" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Torre derecha -->
+        <rect x="24" y="8" width="6" height="18" rx="1" fill="white" opacity="0.9"/>
+        <rect x="24" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="27" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Cuerpo central -->
+        <rect x="10" y="12" width="14" height="14" rx="1" fill="white" opacity="0.9"/>
+        <!-- Torre central -->
+        <rect x="13" y="8" width="8" height="6" rx="1" fill="white" opacity="0.9"/>
+        <rect x="13" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="16" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <rect x="19" y="6" width="2" height="3" rx="0.5" fill="white" opacity="0.9"/>
+        <!-- Puerta -->
+        <path d="M15 26 L15 20 Q17 18 19 20 L19 26 Z" fill="#8B0000"/>
+        <!-- Ventanas -->
+        <rect x="11" y="15" width="3" height="3" rx="1" fill="#8B0000"/>
+        <rect x="20" y="15" width="3" height="3" rx="1" fill="#8B0000"/>
+        <!-- Base -->
+        <rect x="3" y="26" width="28" height="2" rx="1" fill="white" opacity="0.6"/>
+      </svg>
       <div>
-        <div class="topbar-title">La Plata</div>
-        <div class="topbar-sub">Admin</div>
+        <div class="topbar-title">Hostal La Plata</div>
+        <div class="topbar-sub">Oropesa · Admin</div>
       </div>
     </div>
     <div class="topbar-right">
@@ -239,7 +263,8 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="setTab('reservas')"><span class="tab-icon">📋</span>Reservas</button>
+    <button class="tab active" onclick="setTab('reservas')"><span class="tab-icon">📋</span>Activas</button>
+    <button class="tab" onclick="setTab('historial')"><span class="tab-icon">🗂️</span>Historial</button>
     <button class="tab" onclick="setTab('nueva')"><span class="tab-icon">➕</span>Nueva</button>
     <button class="tab" onclick="setTab('limpieza')"><span class="tab-icon">🧹</span>Limpieza</button>
     <button class="tab" onclick="setTab('inventario')"><span class="tab-icon">🏠</span>Inventario</button>
@@ -553,13 +578,14 @@ function renderStats(){
 // ── TABS ──
 function setTab(tab){
   currentTab=tab;
-  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['reservas','nueva','limpieza','inventario'][i]===tab));
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['reservas','historial','nueva','limpieza','inventario'][i]===tab));
   document.getElementById('toolbar').style.display=tab==='reservas'?'flex':'none';
   renderTab();
 }
 function renderTab(){
   const c=document.getElementById('tab-content');
   if(currentTab==='reservas') c.innerHTML=renderReservations();
+  else if(currentTab==='historial') c.innerHTML=renderHistorial();
   else if(currentTab==='nueva'){c.innerHTML=renderNuevaForm();initNewForm();}
   else if(currentTab==='limpieza') c.innerHTML=renderLimpieza();
   else if(currentTab==='inventario') c.innerHTML=renderInventario();
@@ -955,6 +981,44 @@ async function createReservation(){
     showToast('⚠️ Error al crear la reserva','error');
     btn.disabled=false;btn.textContent='Crear reserva confirmada';
   }
+}
+
+// ── HISTORIAL ──
+function renderHistorial(){
+  const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
+  // Reservas pasadas (checkout < ayer) o canceladas
+  const list=reservations.filter(r=>r.check_out<yesterday||r.status==='cancelada')
+    .sort((a,b)=>b.check_out.localeCompare(a.check_out));
+  if(!list.length) return'<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en el historial</div></div>';
+  return list.map((r,i)=>{
+    const n=nights(r.check_in,r.check_out);
+    const pc=r.status==='pendiente'?'pill-p':r.status==='confirmada'?'pill-c':'pill-x';
+    return\`<div class="res-card" style="opacity:0.85;animation-delay:\${i*0.04}s">
+      <div class="res-top">
+        <div style="flex:1;min-width:0">
+          <div class="res-name">\${r.guest_name}</div>
+          <div class="res-room-label">\${ROOM_LABELS[r.room_type]||r.room_type}</div>
+          <div class="res-dates">
+            <span>\${fmtDate(r.check_in)}</span>
+            <span style="color:var(--ink3)">→</span>
+            <span>\${fmtDate(r.check_out)}</span>
+            <span class="res-nights">\${n}n</span>
+          </div>
+        </div>
+        <span class="pill \${pc}">\${r.status}</span>
+      </div>
+      <div class="res-meta">
+        <div class="res-field"><strong>\${r.total_price||'—'}€</strong> total</div>
+        <div class="res-field">\${r.num_guests} huésped\${r.num_guests>1?'es':''}</div>
+        \${r.guest_email?\`<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${r.guest_email}</div>\`:''}
+        \${r.guest_phone?\`<div class="res-field" style="grid-column:span 2">\${r.guest_phone}</div>\`:''}
+      </div>
+      <div class="res-actions">
+        <button class="act-btn" style="flex:0;padding:8px 12px" onclick="openEdit('\${r.id}')">✏️ Editar</button>
+        <button class="act-btn danger" style="flex:0;padding:8px 12px" onclick="deleteRes('\${r.id}','\${r.guest_name}')">🗑</button>
+      </div>
+    </div>\`;
+  }).join('')+'<div style="height:20px"></div>';
 }
 
 // ── LIMPIEZA (estado independiente) ──
