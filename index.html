@@ -391,6 +391,9 @@ const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content
 
 let currentTab = 'reservas';
 let filterStatus = 'all';
+let searchQuery = '';
+let dateFrom = '';
+let dateTo = '';
 let reservations = [];
 let inventory = [];
 let cleaningStatus = {};
@@ -591,6 +594,14 @@ function renderCleaningView() {
 }
 async function updateCleaningRole(id, status) {
   var s = status.toLowerCase();
+  // Confirmación al volver de finalizada a pendiente (evitar desmarcar por error)
+  var prev = cleaningStatus[id];
+  if(prev === 'finalizada' && s === 'pendiente') {
+    if(!confirm('¿Marcar de nuevo como PENDIENTE? Esta habitación estaba finalizada.')) {
+      renderCleaningView();
+      return;
+    }
+  }
   cleaningStatus[id] = s;
   var r = reservations.find(function(x){ return x.id===id; });
   if(r) r.cleaning_status = s;
@@ -650,6 +661,7 @@ function renderStats() {
 // ── TABS ──
 function setTab(tab) {
   currentTab = tab;
+  if(tab !== 'reservas') { searchQuery=''; dateFrom=''; dateTo=''; }
   var tabs = ['reservas','historial','nueva','limpieza','inventario'];
   document.querySelectorAll('.tab').forEach(function(b,i){ b.classList.toggle('active', tabs[i]===tab); });
   document.getElementById('toolbar').style.display = tab==='reservas' ? 'flex' : 'none';
@@ -707,18 +719,97 @@ async function autoAssignRooms() {
   }
 }
 
+// ── RESUMEN DEL DÍA ──
+function renderDaySummary() {
+  var today = new Date().toISOString().split('T')[0];
+  var entradas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_in===today; });
+  var salidas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_out===today; });
+  // Pendiente de cobro: confirmadas activas sin enlace de pago aún
+  var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  var porCobrar = reservations.filter(function(r){
+    return r.status==='confirmada' && r.check_out>=yesterday && !r.payment_link;
+  });
+  var totalCobrar = porCobrar.reduce(function(s,r){ return s + (parseFloat(r.total_price)||0); }, 0);
+
+  var html = '<div style="margin:10px 12px 4px;background:linear-gradient(135deg,var(--cr),var(--cr2));border-radius:var(--r);padding:14px 16px;color:#fff">';
+  html += '<div style="font-family:\'Cormorant Garamond\',serif;font-size:16px;font-weight:600;margin-bottom:10px">Resumen de hoy</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html += '<div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px"><div style="font-size:20px;font-weight:700;font-family:\'Cormorant Garamond\',serif">'+entradas.length+'</div><div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em">Entradas hoy</div></div>';
+  html += '<div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px"><div style="font-size:20px;font-weight:700;font-family:\'Cormorant Garamond\',serif">'+salidas.length+'</div><div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em">Salidas hoy</div></div>';
+  html += '</div>';
+  if(porCobrar.length) {
+    html += '<div style="margin-top:10px;background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:11px;opacity:0.9">⚠️ '+porCobrar.length+' sin enlace de pago</span>';
+    html += '<span style="font-size:14px;font-weight:700">'+totalCobrar+'€</span></div>';
+  }
+  // Entradas de hoy con nombre y habitación
+  if(entradas.length) {
+    html += '<div style="margin-top:10px;font-size:11px;opacity:0.95">';
+    html += '<div style="font-weight:600;margin-bottom:4px;opacity:0.8">Llegan hoy:</div>';
+    entradas.forEach(function(r){
+      html += '<div style="padding:2px 0">• '+r.guest_name+(r.room_number?' — Hab. '+r.room_number:'')+'</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── RESERVATIONS (ACTIVAS) ──
+function renderSearchBar() {
+  var html = '<div style="padding:10px 12px 4px;display:flex;flex-direction:column;gap:8px">';
+  html += '<input class="form-input" id="search-box" placeholder="🔍 Buscar por nombre…" value="'+searchQuery.replace(/"/g,'&quot;')+'" oninput="onSearchInput(this.value)" style="font-size:14px">';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Desde</label>';
+  html += '<input type="date" class="form-input" id="date-from" value="'+dateFrom+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Hasta</label>';
+  html += '<input type="date" class="form-input" id="date-to" value="'+dateTo+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+  if(searchQuery || dateFrom || dateTo) html += '<button class="act-btn" style="flex:0;padding:8px 10px;margin-top:14px" onclick="clearFilters()">✕</button>';
+  html += '</div></div>';
+  return html;
+}
+
+function applyFilters(list) {
+  var q = searchQuery.trim().toLowerCase();
+  if(q) list = list.filter(function(r){ return (r.guest_name||'').toLowerCase().indexOf(q) !== -1; });
+  if(dateFrom) list = list.filter(function(r){ return r.check_out >= dateFrom; });
+  if(dateTo) list = list.filter(function(r){ return r.check_in <= dateTo; });
+  return list;
+}
+
 function renderReservations() {
   var today = new Date().toISOString().split('T')[0];
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  // Active: checkout >= today OR checkout was yesterday (1 day grace), excluding cancelled
   var active = reservations.filter(function(r){
     if(r.status === 'cancelada') return false;
     return r.check_out >= yesterday;
   });
   var list = filterStatus==='all' ? active : active.filter(function(r){ return r.status===filterStatus; });
-  if(!list.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No hay reservas activas'+(filterStatus!=='all'?' con este filtro':'')+'</div></div>';
-  return list.map(function(r,i){ return resCard(r,i,true); }).join('') + '<div style="height:20px"></div>';
+  list = applyFilters(list);
+  var resumen = (filterStatus==='all' && !searchQuery && !dateFrom && !dateTo) ? renderDaySummary() : '';
+  var bar = renderSearchBar();
+  if(!list.length) return resumen + bar + '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No hay reservas'+((filterStatus!=='all'||searchQuery||dateFrom||dateTo)?' con estos filtros':' activas')+'</div></div>';
+  return resumen + bar + list.map(function(r,i){ return resCard(r,i,true); }).join('') + '<div style="height:20px"></div>';
+}
+
+function onSearchInput(val) {
+  searchQuery = val;
+  var c = document.getElementById('tab-content');
+  // Re-render only the list, keep focus on search box
+  c.innerHTML = renderReservations();
+  var box = document.getElementById('search-box');
+  if(box){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+}
+function onDateFilter() {
+  var f = document.getElementById('date-from');
+  var t = document.getElementById('date-to');
+  dateFrom = f ? f.value : '';
+  dateTo = t ? t.value : '';
+  renderTab();
+}
+function clearFilters() {
+  searchQuery = ''; dateFrom = ''; dateTo = '';
+  renderTab();
 }
 
 // ── HISTORIAL ──
