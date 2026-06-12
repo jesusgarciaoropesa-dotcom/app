@@ -76,32 +76,32 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .refresh-btn{background:none;border:1px solid var(--border2);border-radius:8px;padding:5px 8px;font-size:13px;color:var(--ink2);cursor:pointer;flex-shrink:0}
 
 /* RES CARDS */
-.res-card{margin:10px 12px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden}
+.res-card{margin:7px 12px 0;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden}
 .res-card.urgent{border-left:3px solid var(--danger)}
-.res-top{padding:11px 13px 7px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.res-top{padding:9px 12px 5px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .res-name{font-size:14px;font-weight:600;color:var(--ink)}
 .res-room-label{font-size:11px;color:var(--ink3);margin-top:2px}
-.res-dates{font-size:11px;color:var(--ink2);margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.res-dates{font-size:11px;color:var(--ink2);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .res-nights{background:var(--surface2);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;color:var(--ink2)}
 .today-badge{background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700}
 .pill{display:inline-flex;align-items:center;padding:3px 7px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0}
 .pill-p{background:var(--warn-bg);color:var(--warn)}
 .pill-c{background:var(--ok-bg);color:var(--ok)}
 .pill-x{background:var(--danger-bg);color:var(--danger)}
-.res-meta{padding:3px 13px 8px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.res-meta{padding:2px 12px 6px;display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .res-field{font-size:11px;color:var(--ink3)}
 .res-field strong{color:var(--ink2);font-weight:500}
-.res-contact{padding:0 13px 8px;display:flex;gap:7px}
+.res-contact{padding:0 12px 6px;display:flex;gap:7px}
 .contact-btn{flex:1;padding:7px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;text-align:center}
 .contact-btn.wa{background:#dcfce7;color:#166534}
 .contact-btn.mail{background:var(--blue-bg);color:var(--blue)}
-.res-links{padding:7px 13px;background:var(--surface2);display:flex;gap:5px;align-items:center;border-top:1px solid var(--border)}
+.res-links{padding:5px 12px;background:var(--surface2);display:flex;gap:5px;align-items:center;border-top:1px solid var(--border)}
 .link-label{font-size:10px;font-weight:600;color:var(--ink3);white-space:nowrap}
 .link-input{flex:1;border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--ink);background:#fff;outline:none}
 .link-input:focus{border-color:var(--cr)}
 .link-save{background:var(--cr);color:#fff;border:none;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .link-saved{font-size:10px;color:var(--ok);font-weight:600;white-space:nowrap}
-.res-actions{padding:7px 13px;display:flex;gap:5px;border-top:1px solid var(--border)}
+.res-actions{padding:6px 12px;display:flex;gap:5px;border-top:1px solid var(--border)}
 .act-btn{flex:1;padding:7px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);background:var(--surface2);color:var(--ink2);text-align:center}
 .act-btn.ok{background:var(--ok-bg);border-color:#86efac;color:var(--ok)}
 .act-btn.danger{background:var(--danger-bg);border-color:#fca5a5;color:var(--danger)}
@@ -392,6 +392,7 @@ const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content
 let currentTab = 'reservas';
 let filterStatus = 'all';
 let searchQuery = '';
+let searchOpen = false;
 let dateFrom = '';
 let dateTo = '';
 let reservations = [];
@@ -724,32 +725,41 @@ function renderDaySummary() {
   var today = new Date().toISOString().split('T')[0];
   var entradas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_in===today; });
   var salidas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_out===today; });
-  // Pendiente de cobro: confirmadas activas sin enlace de pago aún
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  var porCobrar = reservations.filter(function(r){
+  var sinPago = reservations.filter(function(r){
     return r.status==='confirmada' && r.check_out>=yesterday && !r.payment_link;
   });
-  var totalCobrar = porCobrar.reduce(function(s,r){ return s + (parseFloat(r.total_price)||0); }, 0);
 
-  var html = '<div style="margin:10px 12px 4px;background:linear-gradient(135deg,var(--cr),var(--cr2));border-radius:var(--r);padding:14px 16px;color:#fff">';
-  html += '<div style="font-family:\'Cormorant Garamond\',serif;font-size:16px;font-weight:600;margin-bottom:10px">Resumen de hoy</div>';
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  html += '<div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px"><div style="font-size:20px;font-weight:700;font-family:\'Cormorant Garamond\',serif">'+entradas.length+'</div><div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em">Entradas hoy</div></div>';
-  html += '<div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px"><div style="font-size:20px;font-weight:700;font-family:\'Cormorant Garamond\',serif">'+salidas.length+'</div><div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em">Salidas hoy</div></div>';
+  var html = '<div style="margin:8px 12px 4px;background:linear-gradient(135deg,var(--cr),var(--cr2));border-radius:var(--r);padding:10px 12px;color:#fff">';
+  // Cabecera compacta con contadores inline
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+((entradas.length||salidas.length)?'8px':'0')+'">';
+  html += '<span style="font-family:\'Cormorant Garamond\',serif;font-size:15px;font-weight:600">Hoy</span>';
+  html += '<span style="font-size:11px;opacity:0.9">↓ '+entradas.length+' entradas · ↑ '+salidas.length+' salidas</span>';
   html += '</div>';
-  if(porCobrar.length) {
-    html += '<div style="margin-top:10px;background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">';
-    html += '<span style="font-size:11px;opacity:0.9">⚠️ '+porCobrar.length+' sin enlace de pago</span>';
-    html += '<span style="font-size:14px;font-weight:700">'+totalCobrar+'€</span></div>';
-  }
-  // Entradas de hoy con nombre y habitación
-  if(entradas.length) {
-    html += '<div style="margin-top:10px;font-size:11px;opacity:0.95">';
-    html += '<div style="font-weight:600;margin-bottom:4px;opacity:0.8">Llegan hoy:</div>';
-    entradas.forEach(function(r){
-      html += '<div style="padding:2px 0">• '+r.guest_name+(r.room_number?' — Hab. '+r.room_number:'')+'</div>';
-    });
+
+  // Listas compactas lado a lado
+  if(entradas.length || salidas.length) {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">';
+    // Entradas
+    html += '<div>';
+    if(entradas.length){
+      html += '<div style="opacity:0.7;font-weight:600;margin-bottom:2px">Llegan</div>';
+      entradas.forEach(function(r){ html += '<div style="padding:1px 0">'+r.guest_name+(r.room_number?' <span style="opacity:0.8">'+r.room_number+'</span>':'')+'</div>'; });
+    }
     html += '</div>';
+    // Salidas
+    html += '<div>';
+    if(salidas.length){
+      html += '<div style="opacity:0.7;font-weight:600;margin-bottom:2px">Salen</div>';
+      salidas.forEach(function(r){ html += '<div style="padding:1px 0">'+r.guest_name+(r.room_number?' <span style="opacity:0.8">'+r.room_number+'</span>':'')+'</div>'; });
+    }
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // Aviso sin enlace de pago (sin total en €)
+  if(sinPago.length) {
+    html += '<div style="margin-top:8px;background:rgba(255,255,255,0.15);border-radius:6px;padding:5px 9px;font-size:11px">⚠️ '+sinPago.length+' sin enlace de pago</div>';
   }
   html += '</div>';
   return html;
@@ -757,16 +767,30 @@ function renderDaySummary() {
 
 // ── RESERVATIONS (ACTIVAS) ──
 function renderSearchBar() {
-  var html = '<div style="padding:10px 12px 4px;display:flex;flex-direction:column;gap:8px">';
-  html += '<input class="form-input" id="search-box" placeholder="🔍 Buscar por nombre…" value="'+searchQuery.replace(/"/g,'&quot;')+'" oninput="onSearchInput(this.value)" style="font-size:14px">';
-  html += '<div style="display:flex;gap:8px;align-items:center">';
-  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Desde</label>';
-  html += '<input type="date" class="form-input" id="date-from" value="'+dateFrom+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
-  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Hasta</label>';
-  html += '<input type="date" class="form-input" id="date-to" value="'+dateTo+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
-  if(searchQuery || dateFrom || dateTo) html += '<button class="act-btn" style="flex:0;padding:8px 10px;margin-top:14px" onclick="clearFilters()">✕</button>';
-  html += '</div></div>';
+  var active = searchQuery || dateFrom || dateTo;
+  // Botón lupa (siempre visible, compacto)
+  var html = '<div style="padding:8px 12px 0;display:flex;justify-content:flex-end;gap:6px">';
+  html += '<button class="act-btn" style="flex:0;padding:6px 12px;'+(searchOpen||active?'background:var(--cr);color:#fff;border-color:var(--cr)':'')+'" onclick="toggleSearch()">🔍'+(active?' •':'')+'</button>';
+  html += '</div>';
+  // Panel desplegable
+  if(searchOpen) {
+    html += '<div style="padding:8px 12px 4px;display:flex;flex-direction:column;gap:8px">';
+    html += '<input class="form-input" id="search-box" placeholder="Buscar por nombre…" value="'+searchQuery.replace(/"/g,'&quot;')+'" oninput="onSearchInput(this.value)" style="font-size:14px">';
+    html += '<div style="display:flex;gap:8px;align-items:center">';
+    html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Desde</label>';
+    html += '<input type="date" class="form-input" id="date-from" value="'+dateFrom+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+    html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Hasta</label>';
+    html += '<input type="date" class="form-input" id="date-to" value="'+dateTo+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+    if(active) html += '<button class="act-btn" style="flex:0;padding:8px 10px;margin-top:14px" onclick="clearFilters()">✕</button>';
+    html += '</div></div>';
+  }
   return html;
+}
+function toggleSearch() {
+  searchOpen = !searchOpen;
+  var c = document.getElementById('tab-content');
+  c.innerHTML = renderReservations();
+  if(searchOpen){ var box=document.getElementById('search-box'); if(box) box.focus(); }
 }
 
 function applyFilters(list) {
@@ -893,7 +917,7 @@ function resCard(r, i, showLinks) {
     if(r.payment_link) html += '<span class="link-saved">✓</span>';
     html += '<button class="link-save" data-id="' + id + '" data-type="payment" onclick="saveLink(this.dataset.id,this.dataset.type)">Enviar</button></div>';
     html += '<div class="res-links"><span class="link-label">🔑</span>';
-    html += '<input class="link-input" id="glz-' + id + '" value="' + (r.glizzz_link||'') + '" placeholder="Enlace Glizzz…">';
+    html += '<input class="link-input" id="glz-' + id + '" value="' + (r.glizzz_link||'') + '" placeholder="Enlace Clizzz…">';
     if(r.glizzz_link) html += '<span class="link-saved">✓</span>';
     html += '<button class="link-save" data-id="' + id + '" data-type="glizzz" onclick="saveLink(this.dataset.id,this.dataset.type)">Enviar</button></div>';
   }
@@ -903,7 +927,6 @@ function resCard(r, i, showLinks) {
   if(r.status!=='cancelada') html += '<button class="act-btn danger" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="cancelada">✗ Cancelar</button>';
   html += '<button class="act-btn" style="flex:0;padding:7px 11px" data-id="' + id + '" onclick="openEdit(this.dataset.id)">✏️</button>';
   html += '<button class="act-btn danger" style="flex:0;padding:7px 11px" data-id="' + id + '" data-name="' + r.guest_name + '" onclick="deleteRes(this.dataset.id,this.dataset.name)">🗑</button>';
-  html += '<button class="act-btn" style="flex:0;padding:7px 8px;background:var(--warn-bg);border-color:#fcd34d;color:var(--warn)" data-id="' + id + '" onclick="sendReviewEmail(this.dataset.id)">⭐</button>';
   html += '</div></div>';
   return html;
 }
@@ -1212,8 +1235,8 @@ function calClick(date) {
 }
 
 // ── LIMPIEZA ──
-var CLEAN_STATES = ['pendiente','en limpieza','finalizada'];
-var CLEAN_DOTS = {pendiente:'dot-pending','en limpieza':'dot-cleaning',finalizada:'dot-done'};
+var CLEAN_STATES = ['pendiente','finalizada'];
+var CLEAN_DOTS = {pendiente:'dot-pending',finalizada:'dot-done'};
 
 function renderLimpieza() {
   var today = new Date().toISOString().split('T')[0];
@@ -1221,7 +1244,9 @@ function renderLimpieza() {
     .sort(function(a,b){return a.check_out.localeCompare(b.check_out);});
   if(!active.length) return '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones que gestionar</div></div>';
   var pending = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')!=='finalizada';});
-  var done = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')==='finalizada';});
+  var today2 = new Date().toISOString().split('T')[0];
+  // Finalizadas: solo las del día de su checkout (al día siguiente pasan al historial)
+  var done = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')==='finalizada' && r.check_out===today2;});
   var html = '';
   if(pending.length) {
     html += '<div class="clean-section">Pendientes ('+pending.length+')</div>';
