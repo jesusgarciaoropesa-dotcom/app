@@ -283,6 +283,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <button class="fchip" onclick="setFilter('confirmada')">Confirmadas</button>
     <button class="fchip" onclick="setFilter('cancelada')">Canceladas</button>
     <div class="toolbar-spacer"></div>
+    <button class="refresh-btn" id="toolbar-search-btn" onclick="toggleSearch()" style="margin-right:4px">🔍</button>
     <button class="refresh-btn" onclick="reloadData()">↻</button>
   </div>
 
@@ -837,22 +838,22 @@ function renderDaySummary() {
 // ── RESERVATIONS (ACTIVAS) ──
 function renderSearchBar() {
   var active = searchQuery || dateFrom || dateTo;
-  // Botón lupa (siempre visible, compacto)
-  var html = '<div style="padding:8px 12px 0;display:flex;justify-content:flex-end;gap:6px">';
-  html += '<button class="act-btn" style="flex:0;padding:8px 16px;font-weight:600;'+(searchOpen||active?'background:var(--cr);color:#fff;border-color:var(--cr)':'background:var(--surface);color:var(--cr);border-color:var(--cr)')+'" onclick="toggleSearch()">🔍 Buscar'+(active?' •':'')+'</button>';
-  html += '</div>';
-  // Panel desplegable
-  if(searchOpen) {
-    html += '<div style="padding:8px 12px 4px;display:flex;flex-direction:column;gap:8px">';
-    html += '<input class="form-input" id="search-box" placeholder="Buscar por nombre…" value="'+searchQuery.replace(/"/g,'&quot;')+'" oninput="onSearchInput(this.value)" style="font-size:14px">';
-    html += '<div style="display:flex;gap:8px;align-items:center">';
-    html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Desde</label>';
-    html += '<input type="date" class="form-input" id="date-from" value="'+dateFrom+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
-    html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Hasta</label>';
-    html += '<input type="date" class="form-input" id="date-to" value="'+dateTo+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
-    if(active) html += '<button class="act-btn" style="flex:0;padding:8px 10px;margin-top:14px" onclick="clearFilters()">✕</button>';
-    html += '</div></div>';
+  // Reflejar estado activo en el botón de la barra de filtros
+  var btn = document.getElementById('toolbar-search-btn');
+  if(btn) {
+    if(searchOpen || active) { btn.style.background='var(--cr)'; btn.style.color='#fff'; btn.style.borderColor='var(--cr)'; }
+    else { btn.style.background='none'; btn.style.color='var(--ink2)'; btn.style.borderColor='var(--border2)'; }
   }
+  if(!searchOpen) return '';
+  var html = '<div style="padding:8px 12px 4px;display:flex;flex-direction:column;gap:8px">';
+  html += '<input class="form-input" id="search-box" placeholder="Buscar por nombre…" value="'+searchQuery.replace(/"/g,'&quot;')+'" oninput="onSearchInput(this.value)" style="font-size:14px">';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Desde</label>';
+  html += '<input type="date" class="form-input" id="date-from" value="'+dateFrom+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+  html += '<div style="flex:1"><label style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Hasta</label>';
+  html += '<input type="date" class="form-input" id="date-to" value="'+dateTo+'" onchange="onDateFilter()" style="font-size:12px;padding:8px"></div>';
+  if(active) html += '<button class="act-btn" style="flex:0;padding:8px 10px;margin-top:14px" onclick="clearFilters()">✕</button>';
+  html += '</div></div>';
   return html;
 }
 function toggleSearch() {
