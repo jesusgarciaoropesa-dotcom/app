@@ -319,6 +319,10 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
       <button class="logout-btn" onclick="doLogoutCleaning()">Salir</button>
     </div>
   </div>
+  <div class="tabs">
+    <button class="tab active" id="ctab-tareas" onclick="setCleaningTab('tareas')"><span class="tab-icon">🧹</span>Tareas</button>
+    <button class="tab" id="ctab-historial" onclick="setCleaningTab('historial')"><span class="tab-icon">🗂️</span>Historial</button>
+  </div>
   <div class="scroll" id="cleaning-content"></div>
 </div>
 
@@ -521,12 +525,77 @@ async function loadCleaning() {
     var res = await sbApi('/reservations?select=*&order=check_out.asc');
     reservations = res;
     setConn(true);
-    renderCleaningView();
+    if(cleaningTab==='historial') renderCleaningHistory(); else renderCleaningView();
   } catch(e) {
     setConn(false);
     showToast('⚠️ Error al conectar', 'error');
   }
 }
+var cleaningTab = 'tareas';
+
+function setCleaningTab(tab) {
+  cleaningTab = tab;
+  document.getElementById('ctab-tareas').classList.toggle('active', tab==='tareas');
+  document.getElementById('ctab-historial').classList.toggle('active', tab==='historial');
+  if(tab==='tareas') renderCleaningView();
+  else renderCleaningHistory();
+}
+
+// Lunes de la semana de una fecha (YYYY-MM-DD) -> devuelve YYYY-MM-DD del lunes
+function weekStart(dateStr) {
+  var d = new Date(dateStr + 'T00:00:00');
+  var dow = d.getDay(); // 0 dom .. 6 sab
+  var diff = (dow === 0 ? -6 : 1 - dow);
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+function weekLabel(mondayStr) {
+  var mon = new Date(mondayStr + 'T00:00:00');
+  var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+  var fmt = function(dd){ return dd.getDate() + ' ' + MONTHS_ES[dd.getMonth()].toLowerCase().slice(0,3); };
+  return 'Semana ' + fmt(mon) + ' – ' + fmt(sun) + ' ' + sun.getFullYear();
+}
+
+function renderCleaningHistory() {
+  var c = document.getElementById('cleaning-content');
+  var today = new Date().toISOString().split('T')[0];
+  // Finalizadas cuyo checkout es anterior a hoy (las de hoy siguen en Tareas)
+  var done = reservations.filter(function(r){
+    if(r.status === 'cancelada') return false;
+    var cs = (r.cleaning_status||'pendiente').toLowerCase();
+    return cs === 'finalizada' && r.check_out < today;
+  });
+  if(!done.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">Aún no hay limpiezas en el historial</div></div>';
+    return;
+  }
+  // Agrupar por semana del checkout
+  var groups = {};
+  done.forEach(function(r){
+    var wk = weekStart(r.check_out);
+    if(!groups[wk]) groups[wk] = [];
+    groups[wk].push(r);
+  });
+  var weeks = Object.keys(groups).sort(function(a,b){ return b.localeCompare(a); }); // más reciente primero
+  var html = '';
+  weeks.forEach(function(wk){
+    var items = groups[wk].sort(function(a,b){ return b.check_out.localeCompare(a.check_out); });
+    html += '<div style="padding:12px 12px 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;color:var(--cr)">'+weekLabel(wk)+' ('+items.length+')</div>';
+    html += items.map(function(r){
+      var card = '<div class="clean-card done" style="opacity:0.9">';
+      card += '<div class="clean-status-dot dot-done"></div>';
+      card += '<div class="clean-info">';
+      card += '<div class="clean-room">'+(r.room_number?'Habitación '+r.room_number:(ROOM_LABELS[r.room_type]||r.room_type))+'</div>';
+      card += '<div class="clean-meta">'+(r.room_number?(ROOM_LABELS[r.room_type]||r.room_type)+' · ':'')+fmtDate(r.check_out)+'</div>';
+      card += '</div>';
+      card += '<span style="font-size:11px;color:var(--ok);font-weight:600">✓</span>';
+      card += '</div>';
+      return card;
+    }).join('');
+  });
+  c.innerHTML = html + '<div style="height:20px"></div>';
+}
+
 function renderCleaningView() {
   var today = new Date().toISOString().split('T')[0];
   var tomorrow = new Date(Date.now()+86400000).toISOString().split('T')[0];
@@ -770,7 +839,7 @@ function renderSearchBar() {
   var active = searchQuery || dateFrom || dateTo;
   // Botón lupa (siempre visible, compacto)
   var html = '<div style="padding:8px 12px 0;display:flex;justify-content:flex-end;gap:6px">';
-  html += '<button class="act-btn" style="flex:0;padding:6px 12px;'+(searchOpen||active?'background:var(--cr);color:#fff;border-color:var(--cr)':'')+'" onclick="toggleSearch()">🔍'+(active?' •':'')+'</button>';
+  html += '<button class="act-btn" style="flex:0;padding:8px 16px;font-weight:600;'+(searchOpen||active?'background:var(--cr);color:#fff;border-color:var(--cr)':'background:var(--surface);color:var(--cr);border-color:var(--cr)')+'" onclick="toggleSearch()">🔍 Buscar'+(active?' •':'')+'</button>';
   html += '</div>';
   // Panel desplegable
   if(searchOpen) {
@@ -1238,11 +1307,22 @@ function calClick(date) {
 var CLEAN_STATES = ['pendiente','finalizada'];
 var CLEAN_DOTS = {pendiente:'dot-pending',finalizada:'dot-done'};
 
+var limpiezaView = 'tareas'; // 'tareas' | 'historial'
+function setLimpiezaView(v){ limpiezaView = v; renderTab(); }
+
 function renderLimpieza() {
   var today = new Date().toISOString().split('T')[0];
+  // Toggle Tareas / Historial
+  var toggle = '<div style="padding:10px 12px 4px;display:flex;gap:6px">';
+  toggle += '<button class="fchip'+(limpiezaView==='tareas'?' active':'')+'" onclick="setLimpiezaView(\'tareas\')">🧹 Tareas</button>';
+  toggle += '<button class="fchip'+(limpiezaView==='historial'?' active':'')+'" onclick="setLimpiezaView(\'historial\')">🗂️ Historial</button>';
+  toggle += '</div>';
+
+  if(limpiezaView==='historial') return toggle + renderLimpiezaHistorial();
+
   var active = reservations.filter(function(r){return r.status!=='cancelada';})
     .sort(function(a,b){return a.check_out.localeCompare(b.check_out);});
-  if(!active.length) return '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones que gestionar</div></div>';
+  if(!active.length) return toggle + '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones que gestionar</div></div>';
   var pending = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')!=='finalizada';});
   var today2 = new Date().toISOString().split('T')[0];
   // Finalizadas: solo las del día de su checkout (al día siguiente pasan al historial)
@@ -1281,6 +1361,35 @@ function renderLimpieza() {
       return card;
     }).join('');
   }
+  return toggle + html + '<div style="height:20px"></div>';
+}
+
+// Historial limpieza admin por semanas (reusa weekStart/weekLabel)
+function renderLimpiezaHistorial() {
+  var today = new Date().toISOString().split('T')[0];
+  var done = reservations.filter(function(r){
+    if(r.status==='cancelada') return false;
+    var cs=(cleaningStatus[r.id]||r.cleaning_status||'pendiente').toLowerCase();
+    return cs==='finalizada' && r.check_out < today;
+  });
+  if(!done.length) return '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">Aún no hay limpiezas en el historial</div></div>';
+  var groups={};
+  done.forEach(function(r){ var wk=weekStart(r.check_out); if(!groups[wk])groups[wk]=[]; groups[wk].push(r); });
+  var weeks=Object.keys(groups).sort(function(a,b){return b.localeCompare(a);});
+  var html='';
+  weeks.forEach(function(wk){
+    var items=groups[wk].sort(function(a,b){return b.check_out.localeCompare(a.check_out);});
+    html+='<div class="clean-section" style="color:var(--cr)">'+weekLabel(wk)+' ('+items.length+')</div>';
+    html+=items.map(function(r){
+      var card='<div class="clean-card done" style="opacity:0.9">';
+      card+='<div class="clean-status-dot dot-done"></div>';
+      card+='<div class="clean-info"><div class="clean-room">'+(r.room_number?'Habitación '+r.room_number:(ROOM_LABELS[r.room_type]||r.room_type))+'</div>';
+      card+='<div class="clean-meta">'+r.guest_name+' · '+fmtDate(r.check_out)+'</div></div>';
+      card+='<span style="font-size:11px;color:var(--ok);font-weight:600">✓</span>';
+      card+='</div>';
+      return card;
+    }).join('');
+  });
   return html + '<div style="height:20px"></div>';
 }
 
