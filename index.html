@@ -378,6 +378,13 @@ const FROM_EMAIL = 'onboarding@resend.dev';
 const HOSTAL_NAME = 'Hostal La Plata';
 const PRICES = {doble:40,apartamento:60,familiar:75};
 const ROOM_LABELS = {doble:'Habitación doble',apartamento:'Apartamento con cocina',familiar:'Familiar / Hidromasaje'};
+// Mapa de habitaciones físicas por tipo (provisional, pendiente confirmación dueño)
+const ROOMS_BY_TYPE = {
+  doble: ['101','102','103','104','105','106'],
+  familiar: ['107','108'],
+  apartamento: ['A-1','A-2']
+};
+const ALL_ROOMS = ['101','102','103','104','105','106','107','108','A-1','A-2'];
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const API = SUPABASE_URL + '/rest/v1';
 const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
@@ -558,8 +565,8 @@ function renderCleaningView() {
     var card = '<div class="clean-card" style="animation-delay:'+i*0.04+'s">';
     card += '<div class="clean-status-dot '+dot+'"></div>';
     card += '<div class="clean-info">';
-    card += '<div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-    card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out)+'</div>';
+    card += '<div class="clean-room">'+(r.room_number?'Habitación '+r.room_number:(ROOM_LABELS[r.room_type]||r.room_type))+'</div>';
+    card += '<div class="clean-meta">'+(r.room_number?(ROOM_LABELS[r.room_type]||r.room_type)+' · ':'')+'Checkout: '+fmtDate(r.check_out)+'</div>';
     card += '</div>';
     card += '<select class="clean-sel" data-id="'+r.id+'" onchange="updateCleaningRole(this.dataset.id,this.value)">';
     card += '<option value="pendiente"'+(cs==='pendiente'?' selected':'')+'>Pendiente</option>';
@@ -611,6 +618,8 @@ async function loadAll() {
     renderStats();
     renderTab();
     setConn(true);
+    // Asignar habitaciones automáticamente a reservas sin asignar
+    autoAssignRooms().then(function(){ renderStats(); renderTab(); });
   } catch(e) {
     setConn(false);
     showToast('⚠️ Error al conectar', 'error');
@@ -664,6 +673,40 @@ function setFilter(s) {
 function nights(ci, co) { return Math.round((new Date(co)-new Date(ci))/86400000); }
 function fmtDate(d) { if(!d)return'—'; var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 
+// ── ASIGNACIÓN AUTOMÁTICA DE HABITACIÓN ──
+function findFreeRoom(roomType, checkIn, checkOut, excludeId) {
+  var candidates = ROOMS_BY_TYPE[roomType] || [];
+  // Reservas que solapan estas fechas (excluyendo canceladas y la propia reserva)
+  var overlapping = reservations.filter(function(r){
+    if(r.status === 'cancelada') return false;
+    if(excludeId && r.id === excludeId) return false;
+    return r.check_in < checkOut && r.check_out > checkIn;
+  });
+  var occupied = {};
+  overlapping.forEach(function(r){ if(r.room_number) occupied[r.room_number] = true; });
+  for(var i = 0; i < candidates.length; i++) {
+    if(!occupied[candidates[i]]) return candidates[i];
+  }
+  return null; // No hay habitación libre de ese tipo
+}
+
+// Asigna habitación a las reservas activas que no tengan uno (se llama tras cargar datos)
+async function autoAssignRooms() {
+  var today = new Date().toISOString().split('T')[0];
+  var toAssign = reservations.filter(function(r){
+    return r.status !== 'cancelada' && !r.room_number && r.check_out >= today;
+  }).sort(function(a,b){ return a.check_in.localeCompare(b.check_in); });
+
+  for(var i = 0; i < toAssign.length; i++) {
+    var r = toAssign[i];
+    var room = findFreeRoom(r.room_type, r.check_in, r.check_out, r.id);
+    if(room) {
+      r.room_number = room; // update local first
+      try { await sbApi('/reservations?id=eq.'+r.id, 'PATCH', {room_number:room}); } catch(e) {}
+    }
+  }
+}
+
 // ── RESERVATIONS (ACTIVAS) ──
 function renderReservations() {
   var today = new Date().toISOString().split('T')[0];
@@ -679,15 +722,49 @@ function renderReservations() {
 }
 
 // ── HISTORIAL ──
+var historialMonth = null; // 'YYYY-MM'
+
 function renderHistorial() {
   var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
-  // History: checkout before yesterday OR cancelled (checkout >= yesterday cancelled included)
-  var list = reservations.filter(function(r){
+  var allHistory = reservations.filter(function(r){
     if(r.status === 'cancelada') return true;
     return r.check_out < yesterday;
+  });
+
+  // Get current date for month selector
+  var now = new Date();
+  var months = [];
+  for(var i = 0; i < 24; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    months.push({ key: key, label: MONTHS_ES[d.getMonth()] + ' ' + d.getFullYear() });
+  }
+
+  // Default to current month
+  if(!historialMonth) historialMonth = months[0].key;
+
+  // Filter by selected month
+  var list = allHistory.filter(function(r){
+    var d = r.check_out || r.check_in;
+    return d && d.startsWith(historialMonth);
   }).sort(function(a,b){ return b.check_out.localeCompare(a.check_out); });
-  if(!list.length) return '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en el historial</div></div>';
-  return list.map(function(r,i){ return resCard(r,i,false); }).join('') + '<div style="height:20px"></div>';
+
+  var selector = '<div style="padding:10px 12px 4px">'
+    + '<select class="form-input form-select" onchange="setHistorialMonth(this.value)" style="font-size:13px;padding:9px 12px">';
+  months.forEach(function(m){
+    selector += '<option value="'+m.key+'"'+(historialMonth===m.key?' selected':'')+'>'+m.label+'</option>';
+  });
+  selector += '</select></div>';
+
+  if(!list.length) {
+    return selector + '<div class="empty"><div class="empty-icon">🗂️</div><div class="empty-text">No hay reservas en este mes</div></div>';
+  }
+  return selector + list.map(function(r,i){ return resCard(r,i,false); }).join('') + '<div style="height:20px"></div>';
+}
+
+function setHistorialMonth(month) {
+  historialMonth = month;
+  renderTab();
 }
 
 function resCard(r, i, showLinks) {
@@ -701,7 +778,7 @@ function resCard(r, i, showLinks) {
   html += '<div class="res-top">';
   html += '<div style="flex:1;min-width:0">';
   html += '<div class="res-name">' + r.guest_name + '</div>';
-  html += '<div class="res-room-label">' + (ROOM_LABELS[r.room_type]||r.room_type) + '</div>';
+  html += '<div class="res-room-label">' + (r.room_number ? '<strong style="color:var(--cr)">Hab. ' + r.room_number + '</strong> · ' : '') + (ROOM_LABELS[r.room_type]||r.room_type) + '</div>';
   html += '<div class="res-dates"><span>' + fmtDate(r.check_in) + '</span><span style="color:var(--ink3)">&#8594;</span><span>' + fmtDate(r.check_out) + '</span><span class="res-nights">' + n + 'n</span>';
   if(isToday) html += '<span class="today-badge">HOY</span>';
   html += '</div></div>';
@@ -731,6 +808,7 @@ function resCard(r, i, showLinks) {
   }
   html += '<div class="res-actions">';
   if(r.status!=='confirmada') html += '<button class="act-btn ok" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="confirmada">✓ Confirmar</button>';
+  if(r.status!=='pendiente') html += '<button class="act-btn" style="background:var(--warn-bg);border-color:#fcd34d;color:var(--warn)" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="pendiente">↩ Pendiente</button>';
   if(r.status!=='cancelada') html += '<button class="act-btn danger" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="cancelada">✗ Cancelar</button>';
   html += '<button class="act-btn" style="flex:0;padding:7px 11px" data-id="' + id + '" onclick="openEdit(this.dataset.id)">✏️</button>';
   html += '<button class="act-btn danger" style="flex:0;padding:7px 11px" data-id="' + id + '" data-name="' + r.guest_name + '" onclick="deleteRes(this.dataset.id,this.dataset.name)">🗑</button>';
@@ -789,6 +867,11 @@ function openEdit(id) {
     + '<option value="apartamento"'+(r.room_type==='apartamento'?' selected':'')+'>Apartamento con cocina — 60€/noche</option>'
     + '<option value="familiar"'+(r.room_type==='familiar'?' selected':'')+'>Familiar / Hidromasaje — 75€/noche</option>'
     + '</select></div>'
+    + '<div class="form-group"><label class="form-label">Habitación asignada</label>'
+    + '<select class="form-input form-select" id="e-roomnum">'
+    + '<option value="">Sin asignar</option>'
+    + ALL_ROOMS.map(function(rm){ return '<option value="'+rm+'"'+(r.room_number===rm?' selected':'')+'>Habitación '+rm+'</option>'; }).join('')
+    + '</select></div>'
     + '<div class="form-row"><div class="form-group"><label class="form-label">Entrada</label>'
     + '<input type="date" class="form-input" id="e-ci" value="'+r.check_in+'"></div>'
     + '<div class="form-group"><label class="form-label">Salida</label>'
@@ -826,6 +909,7 @@ async function saveEdit(id) {
   var guests = document.getElementById('e-guests').value;
   var price = document.getElementById('e-price').value;
   var status = document.getElementById('e-status').value;
+  var roomnum = document.getElementById('e-roomnum').value;
   if(!name||!email||!ci||!co){ showToast('⚠️ Rellena todos los campos'); return; }
   if(new Date(co)<=new Date(ci)){ showToast('⚠️ La salida debe ser posterior'); return; }
   var btn = document.getElementById('e-btn');
@@ -833,7 +917,7 @@ async function saveEdit(id) {
   var n = nights(ci, co);
   var total = price ? parseFloat(price) : n*PRICES[room];
   try {
-    await sbApi('/reservations?id=eq.'+id, 'PATCH', {room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:ci,check_out:co,num_guests:parseInt(guests),total_price:total,status:status});
+    await sbApi('/reservations?id=eq.'+id, 'PATCH', {room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:ci,check_out:co,num_guests:parseInt(guests),total_price:total,status:status,room_number:roomnum||null});
     showToast('✓ Reserva actualizada','success');
     closeEdit();
     await loadAll();
