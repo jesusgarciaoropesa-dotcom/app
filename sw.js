@@ -1,6 +1,6 @@
 // Service Worker — Hostal La Plata PWA
-const CACHE = 'hostal-la-plata-v1';
-const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'hostal-la-plata-v2';
+const ASSETS = ['/app/index.html', '/app/manifest.json', '/app/icon-192.png', '/app/icon-512.png'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS); }));
@@ -18,11 +18,9 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
-  // Nunca cachear llamadas a Supabase ni al worker de emails: siempre red
   if(url.indexOf('supabase.co') !== -1 || url.indexOf('workers.dev') !== -1) {
-    return; // deja que el navegador haga la petición normal a la red
+    return;
   }
-  // Para la app: red primero, y si falla, caché (network-first)
   e.respondWith(
     fetch(e.request).then(function(res){
       var copy = res.clone();
