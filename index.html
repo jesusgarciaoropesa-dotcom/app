@@ -856,12 +856,14 @@ function findFreeRoom(roomType, checkIn, checkOut, excludeId) {
     if(excludeId && r.id === excludeId) return false;
     return r.check_in < checkOut && r.check_out > checkIn;
   });
-  var occupied = {};
-  overlapping.forEach(function(r){ if(r.room_number) occupied[r.room_number] = true; });
+  // Una habitación sirve si NINGUNA reserva asignada a ella solapa el rango completo.
+  // Recorremos las candidatas en orden y devolvemos la primera totalmente libre.
   for(var i = 0; i < candidates.length; i++) {
-    if(!occupied[candidates[i]]) return candidates[i];
+    var room = candidates[i];
+    var choca = overlapping.some(function(r){ return r.room_number === room; });
+    if(!choca) return room;
   }
-  return null; // No hay habitación libre de ese tipo
+  return null; // No hay habitación libre de ese tipo en todo el rango
 }
 
 // Asigna habitación a las reservas activas que no tengan uno (se llama tras cargar datos)
@@ -1133,6 +1135,15 @@ async function sendReviewEmail(id) {
 }
 
 // ── EDITAR ──
+// Devuelve true si la habitación 'room' está ocupada por OTRA reserva en el rango [ci,co)
+function isRoomOccupied(room, ci, co, excludeId) {
+  return reservations.some(function(r){
+    if(r.status === 'cancelada') return false;
+    if(excludeId && r.id === excludeId) return false;
+    return r.room_number === room && r.check_in < co && r.check_out > ci;
+  });
+}
+
 function openEdit(id) {
   var r = reservations.find(function(x){return x.id===id;});
   if(!r) return;
@@ -1145,8 +1156,17 @@ function openEdit(id) {
     + '<div class="form-group"><label class="form-label">Habitación asignada</label>'
     + '<select class="form-input form-select" id="e-roomnum">'
     + '<option value="">Sin asignar</option>'
-    + ALL_ROOMS.map(function(rm){ return '<option value="'+rm+'"'+(r.room_number===rm?' selected':'')+'>Habitación '+rm+'</option>'; }).join('')
-    + '</select></div>'
+    + ALL_ROOMS.map(function(rm){
+        var ocupada = isRoomOccupied(rm, r.check_in, r.check_out, r.id);
+        var esSuya = (r.room_number===rm);
+        var etiqueta = 'Habitación '+rm;
+        if(esSuya) etiqueta += ' ✓ (actual)';
+        else if(ocupada) etiqueta += ' — ocupada';
+        else etiqueta += ' — libre';
+        return '<option value="'+rm+'"'+(esSuya?' selected':'')+(ocupada&&!esSuya?' style="color:#b91c1c"':'')+'>'+etiqueta+'</option>';
+      }).join('')
+    + '</select>'
+    + '<div style="font-size:11px;color:var(--ink3);margin-top:4px">Libre/ocupada según las fechas de esta reserva</div></div>'
     + '<div class="form-row"><div class="form-group"><label class="form-label">Entrada</label>'
     + '<input type="date" class="form-input" id="e-ci" value="'+r.check_in+'"></div>'
     + '<div class="form-group"><label class="form-label">Salida</label>'
@@ -1187,6 +1207,10 @@ async function saveEdit(id) {
   var roomnum = document.getElementById('e-roomnum').value;
   if(!name||!email||!ci||!co){ showToast('⚠️ Rellena todos los campos'); return; }
   if(new Date(co)<=new Date(ci)){ showToast('⚠️ La salida debe ser posterior'); return; }
+  // Aviso si la habitación elegida ya está ocupada por otra reserva en estas fechas
+  if(roomnum && isRoomOccupied(roomnum, ci, co, id)) {
+    if(!confirm('⚠️ La habitación '+roomnum+' ya está ocupada por otra reserva en esas fechas. ¿Asignarla de todos modos?')) return;
+  }
   var btn = document.getElementById('e-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando…';
   var n = nights(ci, co);
@@ -1291,7 +1315,19 @@ async function checkAvailability(room, ci, co) {
   var overlapping = all.filter(function(r){ return r.check_in<co && r.check_out>ci; });
   var inv = inventory.find(function(i){ return i.room_type===room; });
   var available = inv ? inv.units : 1;
-  return {overlapping:overlapping.length, available:available, ok:overlapping.length<available};
+  // Comprobar noche a noche: la reserva solo es imposible si ALGUNA noche del rango
+  // tiene TODAS las habitaciones del tipo ocupadas. Así no damos falsos "lleno"
+  // cuando el hueco existe pero está repartido entre varias habitaciones.
+  var maxOnAnyNight = 0;
+  var d = new Date(ci + 'T00:00:00');
+  var end = new Date(co + 'T00:00:00');
+  while(d < end) {
+    var ds = d.toISOString().split('T')[0];
+    var thatNight = overlapping.filter(function(r){ return r.check_in <= ds && r.check_out > ds; }).length;
+    if(thatNight > maxOnAnyNight) maxOnAnyNight = thatNight;
+    d.setDate(d.getDate() + 1);
+  }
+  return {overlapping:maxOnAnyNight, available:available, ok:maxOnAnyNight < available};
 }
 
 async function createReservation() {
