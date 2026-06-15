@@ -213,6 +213,14 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .plan-legend{padding:8px 12px;display:flex;gap:14px;font-size:10px;color:var(--ink3);flex-wrap:wrap}
 .plan-legend span{display:flex;align-items:center;gap:5px}
 .plan-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+/* PLANNING modo mes completo (comprimido, sin scroll) */
+.plan-fit{overflow-x:hidden}
+.plan-grid-fit{width:100%;table-layout:fixed}
+.plan-grid-fit .plan-roomcell{width:34px;min-width:34px;max-width:34px;font-size:9px;padding:4px 2px !important}
+.plan-grid-fit .plan-cell{width:auto;min-width:0;height:34px;font-size:0;padding:0}
+.plan-grid-fit th{font-size:7px;padding:3px 0;width:auto;min-width:0}
+.plan-grid-fit .plan-cell.ocupada{font-size:0}
+
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#1a0e0e;color:#fff;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:500;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.success{background:#166534}
@@ -1632,6 +1640,7 @@ function renderStats2() {
 
 // ── PLANNING (rack mensual con scroll continuo) ──
 var planMonthRef = null; // Date apuntando a cualquier día del mes mostrado
+var planFitMode = false; // false=scroll (detallado) · true=mes completo comprimido
 
 var PLAN_COLORS = { doble:'#9d2235', familiar:'#7a5230', apartamento:'#3a6b4f' };
 
@@ -1656,9 +1665,12 @@ function renderPlanning() {
   html += '<button class="plan-nav-btn" onclick="planNav(1)">›</button>';
   html += '</div>';
 
-  html += '<div style="padding:6px 12px 0;text-align:center"><button class="fchip" onclick="planHoy()">Ir a hoy</button></div>';
+  html += '<div style="padding:6px 12px 0;text-align:center;display:flex;gap:6px;justify-content:center">';
+  html += '<button class="fchip" onclick="planHoy()">Ir a hoy</button>';
+  html += '<button class="fchip'+(planFitMode?' active':'')+'" onclick="planToggleFit()">'+(planFitMode?'🔍 Ver con detalle':'📅 Ver mes completo')+'</button>';
+  html += '</div>';
 
-  html += '<div class="plan-scroll"><table class="plan-grid"><thead><tr><th class="plan-roomcell">Hab.</th>';
+  html += '<div class="plan-scroll'+(planFitMode?' plan-fit':'')+'"><table class="plan-grid'+(planFitMode?' plan-grid-fit':'')+'"><thead><tr><th class="plan-roomcell">Hab.</th>';
   var todayStr = new Date().toISOString().split('T')[0];
   days.forEach(function(d){
     var ds = d.toISOString().split('T')[0];
@@ -1711,11 +1723,13 @@ function planNav(dir){
   planScrollToToday();
 }
 function planHoy(){ planMonthRef = new Date(); renderTab(); planScrollToToday(); }
+function planToggleFit(){ planFitMode = !planFitMode; renderTab(); if(!planFitMode) planScrollToToday(); }
 
 // Tras renderizar, si el mes mostrado es el actual, desplaza el scroll para que hoy quede a la vista
 function planScrollToToday(){
   setTimeout(function(){
     var now = new Date();
+    if(planFitMode) return;
     if(!planMonthRef || planMonthRef.getMonth()!==now.getMonth() || planMonthRef.getFullYear()!==now.getFullYear()) return;
     var scroll = document.querySelector('.plan-scroll');
     if(!scroll) return;
