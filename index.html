@@ -280,6 +280,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <button class="tab" onclick="setTab('nueva')"><span class="tab-icon">➕</span>Nueva</button>
     <button class="tab" onclick="setTab('limpieza')"><span class="tab-icon">🧹</span>Limpieza</button>
     <button class="tab" onclick="setTab('inventario')"><span class="tab-icon">🏠</span>Inventario</button>
+    <button class="tab" onclick="setTab('stats')"><span class="tab-icon">📊</span>Estadísticas</button>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -793,7 +794,7 @@ function renderStats() {
 function setTab(tab) {
   currentTab = tab;
   if(tab !== 'reservas') { searchQuery=''; dateFrom=''; dateTo=''; }
-  var tabs = ['reservas','historial','nueva','limpieza','inventario'];
+  var tabs = ['reservas','historial','nueva','limpieza','inventario','stats'];
   document.querySelectorAll('.tab').forEach(function(b,i){ b.classList.toggle('active', tabs[i]===tab); });
   document.getElementById('toolbar').style.display = tab==='reservas' ? 'flex' : 'none';
   renderTab();
@@ -805,6 +806,7 @@ function renderTab() {
   else if(currentTab==='nueva') { c.innerHTML = renderNuevaForm(); newFormDates={ci:null,co:null}; }
   else if(currentTab==='limpieza') c.innerHTML = renderLimpieza();
   else if(currentTab==='inventario') c.innerHTML = renderInventario();
+  else if(currentTab==='stats') c.innerHTML = renderStats2();
 }
 function setFilter(s) {
   filterStatus = s;
@@ -1493,6 +1495,99 @@ async function changeInv(room_type, delta) {
   document.getElementById('bar-'+room_type).style.width = Math.min(100,Math.round(nv/max*100))+'%';
   try { await sbApi('/room_inventory?room_type=eq.'+room_type, 'PATCH', {units:nv,updated_at:new Date().toISOString()}); showToast('✓ Inventario actualizado'); }
   catch(e) { showToast('⚠️ Error','error'); }
+}
+
+// ── ESTADÍSTICAS ──
+var TOTAL_ROOMS = 10;
+var ROOMS_COUNT_BY_TYPE = { doble: 6, familiar: 2, apartamento: 2 };
+var statsFilter = 'all'; // 'all' | 'doble' | 'familiar' | 'apartamento'
+
+function setStatsFilter(t){ statsFilter = t; renderTab(); }
+
+function renderStats2() {
+  var confirmed = reservations.filter(function(r){ return r.status === 'confirmada'; });
+  if(statsFilter !== 'all') {
+    confirmed = confirmed.filter(function(r){ return r.room_type === statsFilter; });
+  }
+
+  // Nº de habitaciones base para la ocupación según filtro
+  var roomsBase = statsFilter === 'all' ? TOTAL_ROOMS : (ROOMS_COUNT_BY_TYPE[statsFilter] || TOTAL_ROOMS);
+
+  var months = {};
+  function ensure(key){ if(!months[key]) months[key] = {reservas:0, ingresos:0, noches:0}; return months[key]; }
+
+  confirmed.forEach(function(r){
+    if(!r.check_in || !r.check_out) return;
+    var ci = new Date(r.check_in + 'T00:00:00');
+    var co = new Date(r.check_out + 'T00:00:00');
+    var totalNights = Math.round((co - ci) / 86400000);
+    if(totalNights <= 0) return;
+    var pricePerNight = (parseFloat(r.total_price)||0) / totalNights;
+    ensure(r.check_in.slice(0,7)).reservas += 1;
+    var d = new Date(ci);
+    for(var i=0;i<totalNights;i++){
+      var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      var m = ensure(key);
+      m.noches += 1;
+      m.ingresos += pricePerNight;
+      d.setDate(d.getDate()+1);
+    }
+  });
+
+  // Selector de tipo de habitación
+  var chips = [['all','Todas'],['doble','Dobles'],['familiar','Familiares'],['apartamento','Apartamentos']];
+  var selector = '<div style="padding:10px 12px 6px;display:flex;gap:6px;overflow-x:auto">';
+  chips.forEach(function(c){
+    selector += '<button class="fchip'+(statsFilter===c[0]?' active':'')+'" onclick="setStatsFilter(\''+c[0]+'\')">'+c[1]+'</button>';
+  });
+  selector += '</div>';
+
+  var keys = Object.keys(months).sort(function(a,b){ return b.localeCompare(a); });
+  if(!keys.length) {
+    return selector + '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No hay datos para este tipo de habitación</div></div>';
+  }
+
+  var maxIngresos = 0;
+  keys.forEach(function(k){ if(months[k].ingresos > maxIngresos) maxIngresos = months[k].ingresos; });
+
+  var html = selector + '<div style="padding:4px 12px 4px">';
+
+  var totReservas = 0, totIngresos = 0;
+  keys.forEach(function(k){ totReservas += months[k].reservas; totIngresos += months[k].ingresos; });
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
+  html += '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center">'
+    + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:26px;font-weight:700;color:var(--cr)">'+totReservas+'</div>'
+    + '<div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Reservas totales</div></div>';
+  html += '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center">'
+    + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:26px;font-weight:700;color:var(--cr)">'+Math.round(totIngresos)+'€</div>'
+    + '<div style="font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em">Ingresos totales</div></div>';
+  html += '</div>';
+
+  keys.forEach(function(k){
+    var m = months[k];
+    var parts = k.split('-');
+    var label = MONTHS_ES[parseInt(parts[1])-1] + ' ' + parts[0];
+    var diasMes = new Date(parseInt(parts[0]), parseInt(parts[1]), 0).getDate();
+    var nochesPosibles = roomsBase * diasMes;
+    var ocupacion = nochesPosibles > 0 ? Math.round(m.noches / nochesPosibles * 100) : 0;
+    var barW = maxIngresos > 0 ? Math.round(m.ingresos / maxIngresos * 100) : 0;
+    var ingresos = Math.round(m.ingresos);
+
+    html += '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;margin-bottom:8px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">';
+    html += '<span style="font-family:\'Cormorant Garamond\',serif;font-size:16px;font-weight:600;color:var(--ink)">'+label+'</span>';
+    html += '<span style="font-size:17px;font-weight:700;color:var(--cr)">'+ingresos+'€</span>';
+    html += '</div>';
+    html += '<div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:'+barW+'%;background:linear-gradient(90deg,var(--cr),var(--cr3));border-radius:4px"></div></div>';
+    html += '<div style="display:flex;gap:14px;font-size:11px;color:var(--ink3)">';
+    html += '<span>📋 <strong style="color:var(--ink2)">'+m.reservas+'</strong> reserva'+(m.reservas!==1?'s':'')+'</span>';
+    html += '<span>🌙 <strong style="color:var(--ink2)">'+m.noches+'</strong> noches</span>';
+    html += '<span>🏠 <strong style="color:var(--ink2)">'+ocupacion+'%</strong> ocupación</span>';
+    html += '</div></div>';
+  });
+
+  html += '</div><div style="height:20px"></div>';
+  return html;
 }
 
 // ── TOAST ──
