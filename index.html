@@ -1430,7 +1430,10 @@ function renderCal() {
     if(inRange) cls+=' in-range';
     if(isBlocked&&!isStart&&!isEnd) cls+=' blocked';
     else if(isPartial&&!isStart&&!isEnd) cls+=' partial';
-    html+='<button class="'+cls+'" '+(isPast||isBlocked?'disabled':'')+' data-date="'+ds+'" onclick="calClick(this.dataset.date)">'+d+'</button>';
+    // Un día bloqueado puede usarse como SALIDA (esa noche ya no se duerme), si hay entrada elegida y aún no salida
+    var usableAsCheckout = isBlocked && calStart && !calEnd && ds>calStart;
+    var disabled = (isPast || (isBlocked && !usableAsCheckout)) ? 'disabled' : '';
+    html+='<button class="'+cls+'" '+disabled+' data-date="'+ds+'" onclick="calClick(this.dataset.date)">'+d+'</button>';
   }
   document.getElementById('cal-days').innerHTML = html;
   document.getElementById('cal-ci-display').textContent = calStart?fmtDate(calStart):'—';
@@ -1446,7 +1449,23 @@ function renderCal() {
 }
 function calClick(date) {
   if(!calStart||calSelecting===false) { calStart=date; calEnd=null; calSelecting=true; }
-  else { if(date<=calStart){calStart=date;calEnd=null;} else{calEnd=date;calSelecting=false;} }
+  else {
+    if(date<=calStart){ calStart=date; calEnd=null; }
+    else {
+      // Validar que TODAS las noches entre entrada y salida tengan hueco (ninguna 'blocked').
+      // El día de salida no se comprueba (esa noche ya no se duerme).
+      var ok = true;
+      var d = new Date(calStart+'T00:00:00');
+      var end = new Date(date+'T00:00:00');
+      while(d < end) {
+        var ds = d.toISOString().split('T')[0];
+        if(calBlockedDates[ds]==='blocked'){ ok=false; break; }
+        d.setDate(d.getDate()+1);
+      }
+      if(ok){ calEnd=date; calSelecting=false; }
+      else { showToast('⚠️ Hay noches sin disponibilidad en ese rango'); calStart=date; calEnd=null; }
+    }
+  }
   renderCal();
 }
 
