@@ -195,6 +195,24 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 .empty-icon{font-size:36px;margin-bottom:12px;opacity:0.4}
 .empty-text{font-size:13px;line-height:1.6}
 
+/* PLANNING */
+.plan-head{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border)}
+.plan-nav-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);font-size:17px;cursor:pointer;color:var(--ink)}
+.plan-title{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--ink);text-align:center;flex:1}
+.plan-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.plan-grid{border-collapse:collapse;width:100%;min-width:560px}
+.plan-grid th,.plan-grid td{border:1px solid var(--border);padding:0;text-align:center}
+.plan-grid th{background:var(--surface2);font-size:10px;font-weight:600;color:var(--ink2);padding:5px 2px;position:sticky;top:0}
+.plan-roomcell{background:var(--surface2);font-size:11px;font-weight:600;color:var(--ink);padding:6px 8px !important;text-align:left !important;white-space:nowrap;position:sticky;left:0;z-index:2;min-width:62px}
+.plan-cell{width:38px;height:38px;cursor:pointer;font-size:8px;line-height:1.1;overflow:hidden;position:relative}
+.plan-cell.libre{background:#ffffff}
+.plan-cell.libre:active{background:#eafaf0}
+.plan-cell.ocupada{color:#fff;font-weight:600}
+.plan-cell.wknd{background:#faf6f0}
+.plan-th-wknd{background:#efe7da !important;color:var(--cr) !important}
+.plan-legend{padding:8px 12px;display:flex;gap:14px;font-size:10px;color:var(--ink3);flex-wrap:wrap}
+.plan-legend span{display:flex;align-items:center;gap:5px}
+.plan-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#1a0e0e;color:#fff;padding:10px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:500;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.success{background:#166534}
@@ -279,8 +297,9 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     <button class="tab" onclick="setTab('historial')"><span class="tab-icon">🗂️</span>Historial</button>
     <button class="tab" onclick="setTab('nueva')"><span class="tab-icon">➕</span>Nueva</button>
     <button class="tab" onclick="setTab('limpieza')"><span class="tab-icon">🧹</span>Limpieza</button>
-    <button class="tab" onclick="setTab('inventario')"><span class="tab-icon">🏠</span>Inventario</button>
     <button class="tab" onclick="setTab('stats')"><span class="tab-icon">📊</span>Estadísticas</button>
+    <button class="tab" onclick="setTab('planning')"><span class="tab-icon">📅</span>Planning</button>
+    <button class="tab" onclick="setTab('inventario')"><span class="tab-icon">🏠</span>Inventario</button>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -411,6 +430,7 @@ let inventory = [];
 let cleaningStatus = {};
 let calYear, calMonth, calStart = null, calEnd = null, calSelecting = false, calBlockedDates = {};
 let newFormDates = {ci:null, co:null};
+let planPrefill = null; // {room_number, check_in} desde el planning
 
 // ── API ──
 async function sbApi(path, method, body) {
@@ -794,7 +814,7 @@ function renderStats() {
 function setTab(tab) {
   currentTab = tab;
   if(tab !== 'reservas') { searchQuery=''; dateFrom=''; dateTo=''; }
-  var tabs = ['reservas','historial','nueva','limpieza','inventario','stats'];
+  var tabs = ['reservas','historial','nueva','limpieza','stats','planning','inventario'];
   document.querySelectorAll('.tab').forEach(function(b,i){ b.classList.toggle('active', tabs[i]===tab); });
   document.getElementById('toolbar').style.display = tab==='reservas' ? 'flex' : 'none';
   renderTab();
@@ -803,10 +823,11 @@ function renderTab() {
   var c = document.getElementById('tab-content');
   if(currentTab==='reservas') c.innerHTML = renderReservations();
   else if(currentTab==='historial') c.innerHTML = renderHistorial();
-  else if(currentTab==='nueva') { c.innerHTML = renderNuevaForm(); newFormDates={ci:null,co:null}; }
+  else if(currentTab==='nueva') { c.innerHTML = renderNuevaForm(); newFormDates={ci:null,co:null}; applyPlanPrefill(); }
   else if(currentTab==='limpieza') c.innerHTML = renderLimpieza();
   else if(currentTab==='inventario') c.innerHTML = renderInventario();
   else if(currentTab==='stats') c.innerHTML = renderStats2();
+  else if(currentTab==='planning') c.innerHTML = renderPlanning();
 }
 function setFilter(s) {
   filterStatus = s;
@@ -1196,6 +1217,25 @@ function renderNuevaForm() {
     + '<input type="number" class="form-input" id="n-price" placeholder="Se calcula automáticamente" inputmode="numeric"></div>'
     + '<button class="btn-primary" id="n-btn" onclick="createReservation()">Crear reserva confirmada</button>'
     + '</div>';
+}
+
+function applyPlanPrefill() {
+  if(!planPrefill) return;
+  // Deducir tipo desde el número de habitación
+  var rt = 'doble';
+  for(var t in ROOMS_BY_TYPE){ if(ROOMS_BY_TYPE[t].indexOf(planPrefill.room_number)!==-1){ rt = t; break; } }
+  var sel = document.getElementById('n-room');
+  if(sel){ sel.value = rt; }
+  // Fijar fecha de entrada; salida = entrada + 1 noche por defecto
+  var ci = planPrefill.check_in;
+  var co = new Date(ci+'T00:00:00'); co.setDate(co.getDate()+1);
+  var coStr = co.toISOString().split('T')[0];
+  newFormDates = { ci: ci, co: coStr };
+  updateDateDisplay();
+  calcPrice();
+  // Aviso visual de la habitación elegida
+  showToast('Habitación '+planPrefill.room_number+' · '+fmtDate(ci));
+  planPrefill = null;
 }
 
 function updateDateDisplay() {
@@ -1588,6 +1628,111 @@ function renderStats2() {
 
   html += '</div><div style="height:20px"></div>';
   return html;
+}
+
+// ── PLANNING (rack semanal) ──
+var planWeekStart = null; // Date del lunes de la semana mostrada
+
+// Color por tipo de habitación para las celdas ocupadas
+var PLAN_COLORS = { doble:'#9d2235', familiar:'#7a5230', apartamento:'#3a6b4f' };
+
+function planMonday(date){
+  var d = new Date(date);
+  var dow = d.getDay();
+  var diff = (dow === 0 ? -6 : 1 - dow);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function renderPlanning() {
+  if(!planWeekStart) planWeekStart = planMonday(new Date());
+
+  // Días de la semana mostrada
+  var days = [];
+  for(var i=0;i<7;i++){
+    var d = new Date(planWeekStart);
+    d.setDate(d.getDate()+i);
+    days.push(d);
+  }
+  var fromStr = days[0].toISOString().split('T')[0];
+  var toStr = days[6].toISOString().split('T')[0];
+
+  // Cabecera con rango
+  var dn = ['L','M','X','J','V','S','D'];
+  var titulo = days[0].getDate()+' '+MONTHS_ES[days[0].getMonth()].slice(0,3)+' – '+days[6].getDate()+' '+MONTHS_ES[days[6].getMonth()].slice(0,3)+' '+days[6].getFullYear();
+
+  var html = '<div class="plan-head">';
+  html += '<button class="plan-nav-btn" onclick="planNav(-1)">‹</button>';
+  html += '<div class="plan-title">'+titulo+'</div>';
+  html += '<button class="plan-nav-btn" onclick="planNav(1)">›</button>';
+  html += '</div>';
+
+  // Botón "hoy"
+  html += '<div style="padding:6px 12px 0;text-align:center"><button class="fchip" onclick="planHoy()">Ir a hoy</button></div>';
+
+  html += '<div class="plan-scroll"><table class="plan-grid"><thead><tr><th class="plan-roomcell">Hab.</th>';
+  var todayStr = new Date().toISOString().split('T')[0];
+  days.forEach(function(d,idx){
+    var ds = d.toISOString().split('T')[0];
+    var wknd = (idx>=5);
+    var isToday = ds===todayStr;
+    html += '<th class="'+(wknd?'plan-th-wknd':'')+'" style="'+(isToday?'box-shadow:inset 0 -3px 0 var(--cr)':'')+'">'+dn[idx]+'<br>'+d.getDate()+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  // Reservas activas (no canceladas) que solapan la semana
+  var weekRes = reservations.filter(function(r){
+    return r.status!=='cancelada' && r.check_in <= toStr && r.check_out > fromStr;
+  });
+
+  ALL_ROOMS.forEach(function(room){
+    html += '<tr><td class="plan-roomcell">'+room+'</td>';
+    days.forEach(function(d,idx){
+      var ds = d.toISOString().split('T')[0];
+      var wknd = (idx>=5);
+      // Buscar reserva que ocupe esta habitación esta noche (check_in <= ds < check_out)
+      var res = weekRes.find(function(r){ return r.room_number===room && r.check_in<=ds && r.check_out>ds; });
+      if(res){
+        var col = PLAN_COLORS[res.room_type] || '#9d2235';
+        // Mostrar nombre solo el primer día visible de la estancia
+        var showName = (ds===res.check_in) || (idx===0);
+        var nm = showName ? (res.guest_name||'').split(' ')[0] : '';
+        html += '<td class="plan-cell ocupada" style="background:'+col+'" data-id="'+res.id+'" onclick="planOpenRes(this.dataset.id)">'+nm+'</td>';
+      } else {
+        html += '<td class="plan-cell libre'+(wknd?' wknd':'')+'" data-room="'+room+'" data-date="'+ds+'" onclick="planNewRes(this.dataset.room,this.dataset.date)"></td>';
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Leyenda
+  html += '<div class="plan-legend">';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.doble+'"></span>Doble</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.familiar+'"></span>Familiar</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.apartamento+'"></span>Apartamento</span>';
+  html += '<span><span class="plan-dot" style="background:#fff;border:1px solid var(--border2)"></span>Libre · toca para reservar</span>';
+  html += '</div><div style="height:20px"></div>';
+
+  return html;
+}
+
+function planNav(dir){
+  planWeekStart.setDate(planWeekStart.getDate() + dir*7);
+  planWeekStart = new Date(planWeekStart);
+  renderTab();
+}
+function planHoy(){ planWeekStart = planMonday(new Date()); renderTab(); }
+
+function planOpenRes(id){
+  // Abre el modal de edición existente
+  openEdit(id);
+}
+function planNewRes(room, date){
+  // Ir a Nueva con habitación y fecha de entrada prerrellenadas
+  planPrefill = { room_number: room, check_in: date };
+  setTab('nueva');
 }
 
 // ── TOAST ──
