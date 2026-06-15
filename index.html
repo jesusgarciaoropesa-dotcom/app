@@ -827,7 +827,7 @@ function renderTab() {
   else if(currentTab==='limpieza') c.innerHTML = renderLimpieza();
   else if(currentTab==='inventario') c.innerHTML = renderInventario();
   else if(currentTab==='stats') c.innerHTML = renderStats2();
-  else if(currentTab==='planning') c.innerHTML = renderPlanning();
+  else if(currentTab==='planning') { c.innerHTML = renderPlanning(); planScrollToToday(); }
 }
 function setFilter(s) {
   filterStatus = s;
@@ -1630,37 +1630,25 @@ function renderStats2() {
   return html;
 }
 
-// ── PLANNING (rack semanal) ──
-var planWeekStart = null; // Date del lunes de la semana mostrada
+// ── PLANNING (rack mensual con scroll continuo) ──
+var planMonthRef = null; // Date apuntando a cualquier día del mes mostrado
 
-// Color por tipo de habitación para las celdas ocupadas
 var PLAN_COLORS = { doble:'#9d2235', familiar:'#7a5230', apartamento:'#3a6b4f' };
 
-function planMonday(date){
-  var d = new Date(date);
-  var dow = d.getDay();
-  var diff = (dow === 0 ? -6 : 1 - dow);
-  d.setDate(d.getDate() + diff);
-  d.setHours(0,0,0,0);
-  return d;
-}
-
 function renderPlanning() {
-  if(!planWeekStart) planWeekStart = planMonday(new Date());
+  if(!planMonthRef) planMonthRef = new Date();
+  var year = planMonthRef.getFullYear();
+  var month = planMonthRef.getMonth(); // 0-11
+  var diasMes = new Date(year, month+1, 0).getDate();
 
-  // Días de la semana mostrada
+  // Construir todos los días del mes
   var days = [];
-  for(var i=0;i<7;i++){
-    var d = new Date(planWeekStart);
-    d.setDate(d.getDate()+i);
-    days.push(d);
-  }
+  for(var i=1;i<=diasMes;i++){ days.push(new Date(year, month, i)); }
   var fromStr = days[0].toISOString().split('T')[0];
-  var toStr = days[6].toISOString().split('T')[0];
+  var toStr = days[days.length-1].toISOString().split('T')[0];
 
-  // Cabecera con rango
-  var dn = ['L','M','X','J','V','S','D'];
-  var titulo = days[0].getDate()+' '+MONTHS_ES[days[0].getMonth()].slice(0,3)+' – '+days[6].getDate()+' '+MONTHS_ES[days[6].getMonth()].slice(0,3)+' '+days[6].getFullYear();
+  var dn = ['D','L','M','X','J','V','S']; // getDay(): 0=Dom
+  var titulo = MONTHS_ES[month] + ' ' + year;
 
   var html = '<div class="plan-head">';
   html += '<button class="plan-nav-btn" onclick="planNav(-1)">‹</button>';
@@ -1668,21 +1656,21 @@ function renderPlanning() {
   html += '<button class="plan-nav-btn" onclick="planNav(1)">›</button>';
   html += '</div>';
 
-  // Botón "hoy"
   html += '<div style="padding:6px 12px 0;text-align:center"><button class="fchip" onclick="planHoy()">Ir a hoy</button></div>';
 
   html += '<div class="plan-scroll"><table class="plan-grid"><thead><tr><th class="plan-roomcell">Hab.</th>';
   var todayStr = new Date().toISOString().split('T')[0];
-  days.forEach(function(d,idx){
+  days.forEach(function(d){
     var ds = d.toISOString().split('T')[0];
-    var wknd = (idx>=5);
+    var dow = d.getDay();
+    var wknd = (dow===0 || dow===6);
     var isToday = ds===todayStr;
-    html += '<th class="'+(wknd?'plan-th-wknd':'')+'" style="'+(isToday?'box-shadow:inset 0 -3px 0 var(--cr)':'')+'">'+dn[idx]+'<br>'+d.getDate()+'</th>';
+    html += '<th class="'+(wknd?'plan-th-wknd':'')+'" style="'+(isToday?'box-shadow:inset 0 -3px 0 var(--cr)':'')+'">'+dn[dow]+'<br>'+d.getDate()+'</th>';
   });
   html += '</tr></thead><tbody>';
 
-  // Reservas activas (no canceladas) que solapan la semana
-  var weekRes = reservations.filter(function(r){
+  // Reservas (no canceladas) que solapan el mes mostrado
+  var monthRes = reservations.filter(function(r){
     return r.status!=='cancelada' && r.check_in <= toStr && r.check_out > fromStr;
   });
 
@@ -1690,12 +1678,12 @@ function renderPlanning() {
     html += '<tr><td class="plan-roomcell">'+room+'</td>';
     days.forEach(function(d,idx){
       var ds = d.toISOString().split('T')[0];
-      var wknd = (idx>=5);
-      // Buscar reserva que ocupe esta habitación esta noche (check_in <= ds < check_out)
-      var res = weekRes.find(function(r){ return r.room_number===room && r.check_in<=ds && r.check_out>ds; });
+      var dow = d.getDay();
+      var wknd = (dow===0 || dow===6);
+      var res = monthRes.find(function(r){ return r.room_number===room && r.check_in<=ds && r.check_out>ds; });
       if(res){
         var col = PLAN_COLORS[res.room_type] || '#9d2235';
-        // Mostrar nombre solo el primer día visible de la estancia
+        // Nombre el primer día de la estancia o el primer día del mes si ya venía ocupada
         var showName = (ds===res.check_in) || (idx===0);
         var nm = showName ? (res.guest_name||'').split(' ')[0] : '';
         html += '<td class="plan-cell ocupada" style="background:'+col+'" data-id="'+res.id+'" onclick="planOpenRes(this.dataset.id)">'+nm+'</td>';
@@ -1707,7 +1695,6 @@ function renderPlanning() {
   });
   html += '</tbody></table></div>';
 
-  // Leyenda
   html += '<div class="plan-legend">';
   html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.doble+'"></span>Doble</span>';
   html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.familiar+'"></span>Familiar</span>';
@@ -1719,11 +1706,24 @@ function renderPlanning() {
 }
 
 function planNav(dir){
-  planWeekStart.setDate(planWeekStart.getDate() + dir*7);
-  planWeekStart = new Date(planWeekStart);
+  planMonthRef = new Date(planMonthRef.getFullYear(), planMonthRef.getMonth()+dir, 1);
   renderTab();
+  planScrollToToday();
 }
-function planHoy(){ planWeekStart = planMonday(new Date()); renderTab(); }
+function planHoy(){ planMonthRef = new Date(); renderTab(); planScrollToToday(); }
+
+// Tras renderizar, si el mes mostrado es el actual, desplaza el scroll para que hoy quede a la vista
+function planScrollToToday(){
+  setTimeout(function(){
+    var now = new Date();
+    if(!planMonthRef || planMonthRef.getMonth()!==now.getMonth() || planMonthRef.getFullYear()!==now.getFullYear()) return;
+    var scroll = document.querySelector('.plan-scroll');
+    if(!scroll) return;
+    // Aproximar: ancho de celda 62px * (día de hoy - 2) para dejar contexto a la izquierda
+    var dayIdx = now.getDate();
+    scroll.scrollLeft = Math.max(0, (dayIdx-2) * 62);
+  }, 50);
+}
 
 function planOpenRes(id){
   // Abre el modal de edición existente
