@@ -1135,6 +1135,15 @@ async function sendReviewEmail(id) {
 }
 
 // ── EDITAR ──
+// Devuelve las reservas que CHOCAN con 'room' en el rango [ci,co) (excluyendo la propia)
+function roomConflicts(room, ci, co, excludeId) {
+  return reservations.filter(function(r){
+    if(r.status === 'cancelada') return false;
+    if(excludeId && r.id === excludeId) return false;
+    return r.room_number === room && r.check_in < co && r.check_out > ci;
+  });
+}
+
 // Devuelve true si la habitación 'room' está ocupada por OTRA reserva en el rango [ci,co)
 function isRoomOccupied(room, ci, co, excludeId) {
   return reservations.some(function(r){
@@ -1207,9 +1216,18 @@ async function saveEdit(id) {
   var roomnum = document.getElementById('e-roomnum').value;
   if(!name||!email||!ci||!co){ showToast('⚠️ Rellena todos los campos'); return; }
   if(new Date(co)<=new Date(ci)){ showToast('⚠️ La salida debe ser posterior'); return; }
-  // Aviso si la habitación elegida ya está ocupada por otra reserva en estas fechas
-  if(roomnum && isRoomOccupied(roomnum, ci, co, id)) {
-    if(!confirm('⚠️ La habitación '+roomnum+' ya está ocupada por otra reserva en esas fechas. ¿Asignarla de todos modos?')) return;
+  // Aviso DETALLADO si la habitación elegida ya está ocupada: dice con quién y cuándo choca
+  if(roomnum) {
+    var conflicts = roomConflicts(roomnum, ci, co, id);
+    if(conflicts.length) {
+      var detalle = conflicts.map(function(c){
+        return '• ' + (c.guest_name||'(sin nombre)') + ' — del ' + fmtDate(c.check_in) + ' al ' + fmtDate(c.check_out);
+      }).join('\n');
+      var msg = '⚠️ ATENCIÓN: la habitación ' + roomnum + ' ya está ocupada en esas fechas por:\n\n'
+        + detalle
+        + '\n\nSi continúas, habrá un SOLAPAMIENTO (dos reservas en la misma habitación). ¿Asignarla de todos modos?';
+      if(!confirm(msg)) return;
+    }
   }
   var btn = document.getElementById('e-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando…';
@@ -1310,14 +1328,25 @@ async function calcPrice() {
   updateDateDisplay();
 }
 
-async function checkAvailability(room, ci, co) {
-  var all = await sbApi('/reservations?select=id,check_in,check_out,room_type,status&room_type=eq.'+room+'&status=neq.cancelada');
-  var overlapping = all.filter(function(r){ return r.check_in<co && r.check_out>ci; });
-  var inv = inventory.find(function(i){ return i.room_type===room; });
-  var available = inv ? inv.units : 1;
-  // Comprobar noche a noche: la reserva solo es imposible si ALGUNA noche del rango
-  // tiene TODAS las habitaciones del tipo ocupadas. Así no damos falsos "lleno"
-  // cuando el hueco existe pero está repartido entre varias habitaciones.
+async function checkAvailability(room, ci, co, excludeId) {
+  // Comprobación REAL: una reserva de varias noches necesita la MISMA habitación
+  // física libre durante TODO el rango. No basta con que cada noche haya 'una libre'
+  // si es una habitación distinta cada noche (eso provocaría overbooking).
+  var all = await sbApi('/reservations?select=id,check_in,check_out,room_type,room_number,status&room_type=eq.'+room+'&status=neq.cancelada');
+  var overlapping = all.filter(function(r){
+    if(excludeId && r.id===excludeId) return false;
+    return r.check_in<co && r.check_out>ci;
+  });
+  var candidates = ROOMS_BY_TYPE[room] || [];
+  var available = candidates.length;
+  // Buscar la primera habitación física libre en todo el rango
+  var freeRoom = null;
+  for(var i=0;i<candidates.length;i++){
+    var rm = candidates[i];
+    var choca = overlapping.some(function(r){ return r.room_number===rm; });
+    if(!choca){ freeRoom = rm; break; }
+  }
+  // Cuántas ocupadas como máximo en una noche (solo informativo para el mensaje)
   var maxOnAnyNight = 0;
   var d = new Date(ci + 'T00:00:00');
   var end = new Date(co + 'T00:00:00');
@@ -1327,7 +1356,7 @@ async function checkAvailability(room, ci, co) {
     if(thatNight > maxOnAnyNight) maxOnAnyNight = thatNight;
     d.setDate(d.getDate() + 1);
   }
-  return {overlapping:maxOnAnyNight, available:available, ok:maxOnAnyNight < available};
+  return {overlapping:maxOnAnyNight, available:available, ok: freeRoom!==null, freeRoom:freeRoom};
 }
 
 async function createReservation() {
@@ -1342,18 +1371,20 @@ async function createReservation() {
   if(n<=0){ showToast('⚠️ Las fechas no son correctas'); return; }
   var btn = document.getElementById('n-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Comprobando…';
+  var assignedRoom = null;
   try {
     var avail = await checkAvailability(room, newFormDates.ci, newFormDates.co);
     if(!avail.ok) {
-      showToast('⚠️ Sin disponibilidad: '+avail.overlapping+'/'+avail.available+' ocupadas','error');
+      showToast('⚠️ Sin disponibilidad: no queda ninguna habitación de ese tipo libre en esas fechas','error');
       btn.disabled=false; btn.textContent='Crear reserva confirmada'; return;
     }
+    assignedRoom = avail.freeRoom; // habitación física libre todo el rango
   } catch(e) { showToast('⚠️ No se pudo verificar disponibilidad','error'); btn.disabled=false; btn.textContent='Crear reserva confirmada'; return; }
   btn.innerHTML = '<span class="spinner"></span>Creando…';
   var total = customPrice ? parseFloat(customPrice) : n*PRICES[room];
   var emailData = {room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:newFormDates.ci,check_out:newFormDates.co,num_guests:parseInt(guests),total_price:total};
   try {
-    await sbApi('/reservations', 'POST', {room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:newFormDates.ci,check_out:newFormDates.co,num_guests:parseInt(guests),total_price:total,status:'confirmada'});
+    await sbApi('/reservations', 'POST', {room_type:room,guest_name:name,guest_email:email,guest_phone:phone||'',check_in:newFormDates.ci,check_out:newFormDates.co,num_guests:parseInt(guests),total_price:total,status:'confirmada',room_number:assignedRoom});
     showToast('✓ Reserva creada','success');
     newFormDates = {ci:null,co:null}; calStart=null; calEnd=null;
     await loadAll();
@@ -1375,9 +1406,8 @@ async function openCal() {
   calBlockedDates = {};
   var room = document.getElementById('n-room') ? document.getElementById('n-room').value : 'doble';
   try {
-    var inv = inventory.find(function(i){return i.room_type===room;});
-    var maxUnits = inv ? inv.units : 1;
-    var resv = await sbApi('/reservations?select=check_in,check_out&room_type=eq.'+room+'&status=neq.cancelada');
+    var maxUnits = (ROOMS_BY_TYPE[room] || []).length || 1;
+    var resv = await sbApi('/reservations?select=check_in,check_out,room_number&room_type=eq.'+room+'&status=neq.cancelada');
     var start = new Date(); start.setDate(1);
     var end = new Date(); end.setMonth(end.getMonth()+18);
     for(var d=new Date(start); d<=end; d.setDate(d.getDate()+1)) {
@@ -1694,6 +1724,13 @@ function renderStats2() {
 }
 
 // ── PLANNING (rack mensual con scroll continuo) ──
+// Fecha local a 'YYYY-MM-DD' SIN conversión a UTC (evita el desplazamiento de día por zona horaria)
+function toLocalDateStr(dt){
+  var y = dt.getFullYear();
+  var m = String(dt.getMonth()+1).padStart(2,'0');
+  var d = String(dt.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+d;
+}
 var planMonthRef = null; // Date apuntando a cualquier día del mes mostrado
 var planFitMode = false; // false=scroll (detallado) · true=mes completo comprimido
 
@@ -1708,8 +1745,8 @@ function renderPlanning() {
   // Construir todos los días del mes
   var days = [];
   for(var i=1;i<=diasMes;i++){ days.push(new Date(year, month, i)); }
-  var fromStr = days[0].toISOString().split('T')[0];
-  var toStr = days[days.length-1].toISOString().split('T')[0];
+  var fromStr = toLocalDateStr(days[0]);
+  var toStr = toLocalDateStr(days[days.length-1]);
 
   var dn = ['D','L','M','X','J','V','S']; // getDay(): 0=Dom
   var titulo = MONTHS_ES[month] + ' ' + year;
@@ -1726,9 +1763,9 @@ function renderPlanning() {
   html += '</div>';
 
   html += '<div class="plan-scroll'+(planFitMode?' plan-fit':'')+'"><table class="plan-grid'+(planFitMode?' plan-grid-fit':'')+'"><thead><tr><th class="plan-roomcell">Hab.</th>';
-  var todayStr = new Date().toISOString().split('T')[0];
+  var todayStr = toLocalDateStr(new Date());
   days.forEach(function(d){
-    var ds = d.toISOString().split('T')[0];
+    var ds = toLocalDateStr(d);
     var dow = d.getDay();
     var wknd = (dow===0 || dow===6);
     var isToday = ds===todayStr;
@@ -1744,7 +1781,7 @@ function renderPlanning() {
   ALL_ROOMS.forEach(function(room){
     html += '<tr><td class="plan-roomcell">'+room+'</td>';
     days.forEach(function(d,idx){
-      var ds = d.toISOString().split('T')[0];
+      var ds = toLocalDateStr(d);
       var dow = d.getDay();
       var wknd = (dow===0 || dow===6);
       var res = monthRes.find(function(r){ return r.room_number===room && r.check_in<=ds && r.check_out>ds; });
