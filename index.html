@@ -1484,15 +1484,16 @@ function renderCal() {
     var blockState = calBlockedDates[ds];
     var isBlocked = blockState==='blocked';
     var isPartial = blockState==='partial';
+    // Un día bloqueado puede usarse como SALIDA (esa noche ya no se duerme), si hay entrada elegida y aún no salida
+    var usableAsCheckout = isBlocked && calStart && !calEnd && ds>calStart;
     var cls = 'cal-day';
     if(isToday&&!isStart&&!isEnd) cls+=' today';
     if(isStart) cls+=' selected-start';
     if(isEnd) cls+=' selected-end';
     if(inRange) cls+=' in-range';
-    if(isBlocked&&!isStart&&!isEnd) cls+=' blocked';
+    // Solo se pinta como "bloqueado" si NO es seleccionable como salida (si no, se ve normal)
+    if(isBlocked&&!isStart&&!isEnd&&!usableAsCheckout) cls+=' blocked';
     else if(isPartial&&!isStart&&!isEnd) cls+=' partial';
-    // Un día bloqueado puede usarse como SALIDA (esa noche ya no se duerme), si hay entrada elegida y aún no salida
-    var usableAsCheckout = isBlocked && calStart && !calEnd && ds>calStart;
     var disabled = (isPast || (isBlocked && !usableAsCheckout)) ? 'disabled' : '';
     html+='<button class="'+cls+'" '+disabled+' data-date="'+ds+'" onclick="calClick(this.dataset.date)">'+d+'</button>';
   }
