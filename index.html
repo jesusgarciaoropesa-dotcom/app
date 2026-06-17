@@ -256,8 +256,9 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
     </div>
     <h2 class="login-title">Hostal La Plata</h2>
     <p class="login-sub">Panel de administración · Oropesa</p>
+    <input type="email" class="login-input" id="email" placeholder="Email" autocapitalize="off" autocorrect="off" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')doLogin()">
     <input type="password" class="login-input" id="pw" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -407,8 +408,6 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <script>
 const SUPABASE_URL = 'https://lshxkfzsfscvwxqeesjr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaHhrZnpzZnNjdnd4cWVlc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjI2MzgsImV4cCI6MjA5NjE5ODYzOH0.Z1b5rwrvTA1M5P4xYrJ7uvhARp2yLQ0k-7ur51NQRwI';
-const ADMIN_PASS = 'hostal2025';
-const CLEANING_PASS = 'limpieza2025';
 let userRole = 'admin'; // 'admin' or 'cleaning'
 const RESEND_WORKER = 'https://email-hostal.jesusgarciaoropesa.workers.dev/';
 const ADMIN_EMAIL = 'jesusgarciaoropesa@gmail.com';
@@ -425,7 +424,15 @@ const ROOMS_BY_TYPE = {
 const ALL_ROOMS = ['101','102','103','104','105','106','107','108','A-1','A-2'];
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const API = SUPABASE_URL + '/rest/v1';
-const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+var ACCESS_TOKEN = null; // token de sesión del usuario autenticado (Supabase Auth)
+function authHeaders() {
+  return {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + (ACCESS_TOKEN || SUPABASE_KEY),
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+}
 
 let currentTab = 'reservas';
 let filterStatus = 'all';
@@ -443,7 +450,7 @@ let planPrefill = null; // {room_number, check_in} desde el planning
 // ── API ──
 async function sbApi(path, method, body) {
   method = method || 'GET';
-  var opts = {method:method, headers:H};
+  var opts = {method:method, headers: authHeaders()};
   if(body) opts.body = JSON.stringify(body);
   var res = await fetch(API+path, opts);
   if(!res.ok){ var t = await res.text(); throw new Error(t); }
@@ -582,30 +589,53 @@ async function emailResena(r) {
 }
 
 // ── AUTH ──
-function doLogin() {
+async function doLogin() {
+  var email = (document.getElementById('email').value || '').trim();
   var pw = document.getElementById('pw').value;
-  if(pw === ADMIN_PASS) {
-    userRole = 'admin';
+  var errEl = document.getElementById('login-err');
+  var btn = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if(!email || !pw) { errEl.textContent = 'Introduce email y contraseña'; return; }
+  btn.disabled = true; var prevTxt = btn.textContent; btn.textContent = 'Entrando…';
+  try {
+    // Autenticación real contra Supabase Auth
+    var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pw })
+    });
+    var data = await res.json();
+    if(!res.ok || !data.access_token) {
+      errEl.textContent = 'Email o contraseña incorrectos';
+      btn.disabled = false; btn.textContent = prevTxt;
+      document.getElementById('pw').value = '';
+      return;
+    }
+    // Guardar token: a partir de aquí todas las llamadas van firmadas como este usuario
+    ACCESS_TOKEN = data.access_token;
+    // Determinar rol desde los metadatos del usuario
+    var meta = (data.user && (data.user.user_metadata || data.user.raw_user_meta_data)) || {};
+    userRole = (meta.rol === 'admin') ? 'admin' : 'cleaning';
+    document.getElementById('pw').value = '';
+    document.getElementById('email').value = '';
+    btn.disabled = false; btn.textContent = prevTxt;
     document.getElementById('login-screen').style.display = 'none';
-    var ms = document.getElementById('main-screen');
-    ms.style.display = 'flex';
-    ms.style.flexDirection = 'column';
-    document.getElementById('pw').value = '';
-    loadAll();
-  } else if(pw === CLEANING_PASS) {
-    userRole = 'cleaning';
-    document.getElementById('login-screen').style.display = 'none';
-    var cs = document.getElementById('cleaning-screen');
-    cs.style.display = 'flex';
-    cs.style.flexDirection = 'column';
-    document.getElementById('pw').value = '';
-    loadCleaning();
-  } else {
-    document.getElementById('login-err').textContent = 'Contraseña incorrecta';
-    document.getElementById('pw').value = '';
+    if(userRole === 'admin') {
+      var ms = document.getElementById('main-screen');
+      ms.style.display = 'flex'; ms.style.flexDirection = 'column';
+      loadAll();
+    } else {
+      var cs = document.getElementById('cleaning-screen');
+      cs.style.display = 'flex'; cs.style.flexDirection = 'column';
+      loadCleaning();
+    }
+  } catch(e) {
+    errEl.textContent = 'No se pudo conectar. Inténtalo de nuevo.';
+    btn.disabled = false; btn.textContent = prevTxt;
   }
 }
 function doLogoutCleaning() {
+  ACCESS_TOKEN = null;
   document.getElementById('cleaning-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   userRole = 'admin';
@@ -637,7 +667,7 @@ function weekStart(dateStr) {
   var dow = d.getDay(); // 0 dom .. 6 sab
   var diff = (dow === 0 ? -6 : 1 - dow);
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return toLocalDateStr(d);
 }
 function weekLabel(mondayStr) {
   var mon = new Date(mondayStr + 'T00:00:00');
@@ -648,7 +678,7 @@ function weekLabel(mondayStr) {
 
 function renderCleaningHistory() {
   var c = document.getElementById('cleaning-content');
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   // Finalizadas cuyo checkout es anterior a hoy (las de hoy siguen en Tareas)
   var done = reservations.filter(function(r){
     if(r.status === 'cancelada') return false;
@@ -687,8 +717,8 @@ function renderCleaningHistory() {
 }
 
 function renderCleaningView() {
-  var today = new Date().toISOString().split('T')[0];
-  var tomorrow = new Date(Date.now()+86400000).toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
+  var tomorrow = toLocalDateStr(new Date(Date.now()+86400000));
   var c = document.getElementById('cleaning-content');
 
   // Only active reservations, not cancelled
@@ -770,6 +800,7 @@ async function updateCleaningRole(id, status) {
   showToast('✓ Limpieza actualizada');
 }
 function doLogout() {
+  ACCESS_TOKEN = null;
   document.getElementById('main-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -806,7 +837,7 @@ function setConn(ok) {
 
 // ── STATS ──
 function renderStats() {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var total = reservations.length;
   var pend = reservations.filter(function(r){ return r.status==='pendiente'; }).length;
   var conf = reservations.filter(function(r){ return r.status==='confirmada'; }).length;
@@ -868,7 +899,7 @@ function findFreeRoom(roomType, checkIn, checkOut, excludeId) {
 
 // Asigna habitación a las reservas activas que no tengan uno (se llama tras cargar datos)
 async function autoAssignRooms() {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var toAssign = reservations.filter(function(r){
     return r.status !== 'cancelada' && !r.room_number && r.check_out >= today;
   }).sort(function(a,b){ return a.check_in.localeCompare(b.check_in); });
@@ -885,10 +916,10 @@ async function autoAssignRooms() {
 
 // ── RESUMEN DEL DÍA ──
 function renderDaySummary() {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var entradas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_in===today; });
   var salidas = reservations.filter(function(r){ return r.status!=='cancelada' && r.check_out===today; });
-  var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  var yesterday = toLocalDateStr(new Date(Date.now()-86400000));
   var sinPago = reservations.filter(function(r){
     return r.status==='confirmada' && r.check_out>=yesterday && !r.payment_link;
   });
@@ -965,8 +996,8 @@ function applyFilters(list) {
 }
 
 function renderReservations() {
-  var today = new Date().toISOString().split('T')[0];
-  var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
+  var yesterday = toLocalDateStr(new Date(Date.now()-86400000));
   var active = reservations.filter(function(r){
     if(r.status === 'cancelada') return false;
     return r.check_out >= yesterday;
@@ -1003,7 +1034,7 @@ function clearFilters() {
 var historialMonth = null; // 'YYYY-MM'
 
 function renderHistorial() {
-  var yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  var yesterday = toLocalDateStr(new Date(Date.now()-86400000));
   var allHistory = reservations.filter(function(r){
     if(r.status === 'cancelada') return true;
     return r.check_out < yesterday;
@@ -1046,7 +1077,7 @@ function setHistorialMonth(month) {
 }
 
 function resCard(r, i, showLinks) {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var n = nights(r.check_in, r.check_out);
   var isToday = r.check_in===today || r.check_out===today;
   var urgent = r.status==='pendiente' && isToday;
@@ -1279,7 +1310,7 @@ function applyPlanPrefill() {
   // Fijar fecha de entrada; salida = entrada + 1 noche por defecto
   var ci = planPrefill.check_in;
   var co = new Date(ci+'T00:00:00'); co.setDate(co.getDate()+1);
-  var coStr = co.toISOString().split('T')[0];
+  var coStr = toLocalDateStr(co);
   newFormDates = { ci: ci, co: coStr };
   updateDateDisplay();
   calcPrice();
@@ -1351,7 +1382,7 @@ async function checkAvailability(room, ci, co, excludeId) {
   var d = new Date(ci + 'T00:00:00');
   var end = new Date(co + 'T00:00:00');
   while(d < end) {
-    var ds = d.toISOString().split('T')[0];
+    var ds = toLocalDateStr(d);
     var thatNight = overlapping.filter(function(r){ return r.check_in <= ds && r.check_out > ds; }).length;
     if(thatNight > maxOnAnyNight) maxOnAnyNight = thatNight;
     d.setDate(d.getDate() + 1);
@@ -1411,7 +1442,7 @@ async function openCal() {
     var start = new Date(); start.setDate(1);
     var end = new Date(); end.setMonth(end.getMonth()+18);
     for(var d=new Date(start); d<=end; d.setDate(d.getDate()+1)) {
-      var ds = d.toISOString().split('T')[0];
+      var ds = toLocalDateStr(d);
       var count = resv.filter(function(r){return r.check_in<=ds&&r.check_out>ds;}).length;
       if(count>=maxUnits) calBlockedDates[ds]='blocked';
       else if(count>0) calBlockedDates[ds]='partial';
@@ -1437,7 +1468,7 @@ function calNav(dir) {
 }
 function renderCal() {
   document.getElementById('cal-month-title').textContent = MONTHS_ES[calMonth]+' '+calYear;
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var firstDay = new Date(calYear,calMonth,1);
   var lastDay = new Date(calYear,calMonth+1,0);
   var startDow = firstDay.getDay(); startDow = startDow===0?6:startDow-1;
@@ -1488,7 +1519,7 @@ function calClick(date) {
       var d = new Date(calStart+'T00:00:00');
       var end = new Date(date+'T00:00:00');
       while(d < end) {
-        var ds = d.toISOString().split('T')[0];
+        var ds = toLocalDateStr(d);
         if(calBlockedDates[ds]==='blocked'){ ok=false; break; }
         d.setDate(d.getDate()+1);
       }
@@ -1507,7 +1538,7 @@ var limpiezaView = 'tareas'; // 'tareas' | 'historial'
 function setLimpiezaView(v){ limpiezaView = v; renderTab(); }
 
 function renderLimpieza() {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   // Toggle Tareas / Historial
   var toggle = '<div style="padding:10px 12px 4px;display:flex;gap:6px">';
   toggle += '<button class="fchip'+(limpiezaView==='tareas'?' active':'')+'" onclick="setLimpiezaView(\'tareas\')">🧹 Tareas</button>';
@@ -1520,7 +1551,7 @@ function renderLimpieza() {
     .sort(function(a,b){return a.check_out.localeCompare(b.check_out);});
   if(!active.length) return toggle + '<div class="empty"><div class="empty-icon">✨</div><div class="empty-text">No hay habitaciones que gestionar</div></div>';
   var pending = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')!=='finalizada';});
-  var today2 = new Date().toISOString().split('T')[0];
+  var today2 = toLocalDateStr(new Date());
   // Finalizadas: solo las del día de su checkout (al día siguiente pasan al historial)
   var done = active.filter(function(r){return (cleaningStatus[r.id]||'pendiente')==='finalizada' && r.check_out===today2;});
   var html = '';
@@ -1562,7 +1593,7 @@ function renderLimpieza() {
 
 // Historial limpieza admin por semanas (reusa weekStart/weekLabel)
 function renderLimpiezaHistorial() {
-  var today = new Date().toISOString().split('T')[0];
+  var today = toLocalDateStr(new Date());
   var done = reservations.filter(function(r){
     if(r.status==='cancelada') return false;
     var cs=(cleaningStatus[r.id]||r.cleaning_status||'pendiente').toLowerCase();
