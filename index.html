@@ -1484,8 +1484,19 @@ function renderCal() {
     var blockState = calBlockedDates[ds];
     var isBlocked = blockState==='blocked';
     var isPartial = blockState==='partial';
-    // Un día bloqueado puede usarse como SALIDA (esa noche ya no se duerme), si hay entrada elegida y aún no salida
-    var usableAsCheckout = isBlocked && calStart && !calEnd && ds>calStart;
+    // Un día bloqueado puede usarse como SALIDA solo si: hay entrada elegida, aún no hay salida,
+    // es posterior a la entrada, y TODAS las noches entre la entrada y este día están libres.
+    var usableAsCheckout = false;
+    if(isBlocked && calStart && !calEnd && ds>calStart) {
+      usableAsCheckout = true;
+      var cur = new Date(calStart+'T00:00:00');
+      var limit = new Date(ds+'T00:00:00');
+      // recorrer las noches desde la entrada hasta el día anterior a este (la noche de salida no cuenta)
+      for(var dd=new Date(cur); dd<limit; dd.setDate(dd.getDate()+1)){
+        var k = toLocalDateStr(dd);
+        if(calBlockedDates[k]==='blocked'){ usableAsCheckout=false; break; }
+      }
+    }
     var cls = 'cal-day';
     if(isToday&&!isStart&&!isEnd) cls+=' today';
     if(isStart) cls+=' selected-start';
