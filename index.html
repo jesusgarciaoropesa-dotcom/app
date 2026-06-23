@@ -1080,9 +1080,11 @@ function openEdit(id) {
   if(!r) return;
   var html = '<div class="form-group"><label class="form-label">Tipo de habitación</label>'
     + '<select class="form-input form-select" id="e-room">'
-    + '<option value="doble"'+(r.room_type==='doble'?' selected':'')+'>Habitación doble — 40€/noche</option>'
-    + '<option value="apartamento"'+(r.room_type==='apartamento'?' selected':'')+'>Apartamento con cocina — 60€/noche</option>'
-    + '<option value="familiar"'+(r.room_type==='familiar'?' selected':'')+'>Familiar / Hidromasaje — 75€/noche</option>'
+    + '<option value="cama-grande"'+(r.room_type==='cama-grande'?' selected':'')+'>Hab. cama grande — 40€/noche</option>'
+    + '<option value="dos-camas"'+(r.room_type==='dos-camas'?' selected':'')+'>Hab. doble 2 camas — 40€/noche</option>'
+    + '<option value="suite"'+(r.room_type==='suite'?' selected':'')+'>Suite con terraza — 75€/noche</option>'
+    + '<option value="estudio"'+(r.room_type==='estudio'?' selected':'')+'>Estudio Estándar — 60€/noche</option>'
+    + '<option value="estudio-adaptado"'+(r.room_type==='estudio-adaptado'?' selected':'')+'>Estudio Adaptado — 60€/noche</option>'
     + '</select></div>'
     + '<div class="form-group"><label class="form-label">Habitación asignada</label>'
     + '<select class="form-input form-select" id="e-roomnum">'
@@ -1172,9 +1174,11 @@ function renderNuevaForm() {
     + '<div class="form-section">Habitación y fechas</div>'
     + '<div class="form-group"><label class="form-label">Tipo de habitación</label>'
     + '<select class="form-input form-select" id="n-room" onchange="calcPrice()">'
-    + '<option value="doble">Habitación doble — 40€/noche</option>'
-    + '<option value="apartamento">Apartamento con cocina — 60€/noche</option>'
-    + '<option value="familiar">Familiar / Hidromasaje — 75€/noche</option>'
+    + '<option value="cama-grande">Hab. cama grande — 40€/noche</option>'
+    + '<option value="dos-camas">Hab. doble 2 camas — 40€/noche</option>'
+    + '<option value="suite">Suite con terraza — 75€/noche</option>'
+    + '<option value="estudio">Estudio Estándar — 60€/noche</option>'
+    + '<option value="estudio-adaptado">Estudio Adaptado — 60€/noche</option>'
     + '</select></div>'
     + '<div class="form-group"><label class="form-label">Fechas de estancia</label>'
     + '<div class="date-range-display empty" id="date-display" onclick="openCal()"><span id="date-display-text">Toca para seleccionar fechas</span><span>📅</span></div></div>'
@@ -1194,7 +1198,7 @@ function renderNuevaForm() {
 function applyPlanPrefill() {
   if(!planPrefill) return;
   // Deducir tipo desde el número de habitación
-  var rt = 'doble';
+  var rt = 'cama-grande';
   for(var t in ROOMS_BY_TYPE){ if(ROOMS_BY_TYPE[t].indexOf(planPrefill.room_number)!==-1){ rt = t; break; } }
   var sel = document.getElementById('n-room');
   if(sel){ sel.value = rt; }
@@ -1226,7 +1230,7 @@ function updateDateDisplay() {
 
 async function calcPrice() {
   if(!newFormDates.ci||!newFormDates.co) return;
-  var room = document.getElementById('n-room') ? document.getElementById('n-room').value : 'doble';
+  var room = document.getElementById('n-room') ? document.getElementById('n-room').value : 'cama-grande';
   var n = nights(newFormDates.ci, newFormDates.co);
   var total = n * PRICES[room];
   var prev = document.getElementById('price-preview');
@@ -1326,7 +1330,7 @@ async function openCal() {
   calYear=now.getFullYear(); calMonth=now.getMonth();
   calStart=null; calEnd=null; calSelecting=false;
   calBlockedDates = {};
-  var room = document.getElementById('n-room') ? document.getElementById('n-room').value : 'doble';
+  var room = document.getElementById('n-room') ? document.getElementById('n-room').value : 'cama-grande';
   try {
     var maxUnits = (ROOMS_BY_TYPE[room] || []).length || 1;
     var resv = await sbApi('/reservations?select=check_in,check_out,room_number&room_type=eq.'+room+'&status=neq.cancelada');
@@ -1532,9 +1536,9 @@ async function updateCleaning(id, status) {
 }
 
 // ── INVENTARIO ──
-var INV_LABELS = {doble:'Habitación doble',apartamento:'Apartamento con cocina',familiar:'Familiar / Hidromasaje'};
-var INV_PRICES = {doble:'40€/noche',apartamento:'60€/noche',familiar:'75€/noche'};
-var INV_MAX = {doble:10,apartamento:5,familiar:5};
+var INV_LABELS = {'cama-grande':'Hab. cama grande','dos-camas':'Hab. doble 2 camas','suite':'Suite con terraza','estudio':'Estudio Estándar','estudio-adaptado':'Estudio Adaptado'};
+var INV_PRICES = {'cama-grande':'40€/noche','dos-camas':'40€/noche','suite':'75€/noche','estudio':'60€/noche','estudio-adaptado':'60€/noche'};
+var INV_MAX = {'cama-grande':10,'dos-camas':5,'suite':5,'estudio':5,'estudio-adaptado':5};
 
 function renderInventario() {
   return inventory.map(function(inv,i){
@@ -1602,7 +1606,7 @@ function renderStats2() {
   });
 
   // Selector de tipo de habitación
-  var chips = [['all','Todas'],['doble','Dobles'],['familiar','Familiares'],['apartamento','Apartamentos']];
+  var chips = [['all','Todas'],['cama-grande','Cama grande'],['dos-camas','2 camas'],['suite','Suite'],['estudio','Estudio'],['estudio-adaptado','Adaptado']];
   var selector = '<div style="padding:10px 12px 6px;display:flex;gap:6px;overflow-x:auto">';
   chips.forEach(function(c){
     selector += '<button class="fchip'+(statsFilter===c[0]?' active':'')+'" onclick="setStatsFilter(\''+c[0]+'\')">'+c[1]+'</button>';
@@ -1668,7 +1672,7 @@ function toLocalDateStr(dt){
 var planMonthRef = null; // Date apuntando a cualquier día del mes mostrado
 var planFitMode = false; // false=scroll (detallado) · true=mes completo comprimido
 
-var PLAN_COLORS = { doble:'#9d2235', familiar:'#7a5230', apartamento:'#3a6b4f' };
+var PLAN_COLORS = { 'cama-grande':'#9d2235', 'dos-camas':'#c0562a', suite:'#7a5230', estudio:'#3a6b4f', 'estudio-adaptado':'#2a5580' };
 
 function renderPlanning() {
   if(!planMonthRef) planMonthRef = new Date();
@@ -1734,9 +1738,10 @@ function renderPlanning() {
   html += '</tbody></table></div>';
 
   html += '<div class="plan-legend">';
-  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.doble+'"></span>Doble</span>';
-  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.familiar+'"></span>Familiar</span>';
-  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.apartamento+'"></span>Apartamento</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS['cama-grande']+'"></span>Cama grande</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS['dos-camas']+'"></span>2 camas</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.suite+'"></span>Suite</span>';
+  html += '<span><span class="plan-dot" style="background:'+PLAN_COLORS.estudio+'"></span>Estudio</span>';
   html += '<span><span class="plan-dot" style="background:#fff;border:1px solid var(--border2)"></span>Libre · toca para reservar</span>';
   html += '</div><div style="height:20px"></div>';
 
