@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -368,14 +368,10 @@ const RESEND_WORKER = 'https://email-hostal.jesusgarciaoropesa.workers.dev/';
 const ADMIN_EMAIL = 'jesusgarciaoropesa@gmail.com';
 const FROM_EMAIL = 'onboarding@resend.dev';
 const HOSTAL_NAME = 'Hostal La Plata';
-const PRICES = {doble:40,apartamento:60,familiar:75};
-const ROOM_LABELS = {doble:'Habitación doble',apartamento:'Apartamento con cocina',familiar:'Familiar / Hidromasaje'};
+const PRICES = {"cama-grande":40,"dos-camas":40,"suite":75,"estudio":60,"estudio-adaptado":60};
+const ROOM_LABELS = {"cama-grande":"Hab. cama grande","dos-camas":"Hab. doble 2 camas","suite":"Suite con terraza","estudio":"Estudio Estándar","estudio-adaptado":"Estudio Adaptado"};
 // Mapa de habitaciones físicas por tipo (provisional, pendiente confirmación dueño)
-const ROOMS_BY_TYPE = {
-  doble: ['101','102','103','104','105','106'],
-  familiar: ['107','108'],
-  apartamento: ['A-1','A-2']
-};
+const ROOMS_BY_TYPE = {"cama-grande":["101","102","103","104"],"dos-camas":["105","106"],"suite":["107","108"],"estudio":["A-1"],"estudio-adaptado":["A-2"]};
 const ALL_ROOMS = ['101','102','103','104','105','106','107','108','A-1','A-2'];
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const API = SUPABASE_URL + '/rest/v1';
@@ -680,7 +676,7 @@ async function loadAll() {
       sbApi('/room_inventory?select=*')
     ]);
     reservations = results[0];
-    inventory = results[1].length ? results[1] : [{room_type:'doble',units:3},{room_type:'apartamento',units:2},{room_type:'familiar',units:2}];
+    inventory = results[1].length ? results[1] : [{room_type:'cama-grande',units:4},{room_type:'dos-camas',units:2},{room_type:'suite',units:2},{room_type:'estudio',units:1},{room_type:'estudio-adaptado',units:1}];
     reservations.forEach(function(r) {
       cleaningStatus[r.id] = (r.cleaning_status || 'pendiente').toLowerCase();
     });
