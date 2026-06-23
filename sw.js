@@ -1,5 +1,5 @@
 // Service Worker — Hostal La Plata PWA
-const CACHE = 'hostal-la-plata-v2';
+const CACHE = 'hostal-la-plata-v3';
 const ASSETS = ['/app/index.html', '/app/manifest.json', '/app/icon-192.png', '/app/icon-512.png'];
 
 self.addEventListener('install', function(e) {
