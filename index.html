@@ -368,7 +368,7 @@ const RESEND_WORKER = 'https://email-hostal.jesusgarciaoropesa.workers.dev/';
 const ADMIN_EMAIL = 'jesusgarciaoropesa@gmail.com';
 const FROM_EMAIL = 'onboarding@resend.dev';
 const HOSTAL_NAME = 'Hostal La Plata';
-const PRICES = {"cama-grande":40,"dos-camas":40,"suite":75,"estudio":60,"estudio-adaptado":60};
+const PRICES = {"cama-grande":45,"dos-camas":40,"suite":55,"estudio":60,"estudio-adaptado":60};
 const ROOM_LABELS = {"cama-grande":"Hab. cama grande","dos-camas":"Hab. doble 2 camas","suite":"Suite con terraza","estudio":"Estudio Estándar","estudio-adaptado":"Estudio Adaptado"};
 // Mapa de habitaciones físicas por tipo (provisional, pendiente confirmación dueño)
 const ROOMS_BY_TYPE = {"cama-grande":["101","102","103","104"],"dos-camas":["105","106"],"suite":["107","108"],"estudio":["A-1"],"estudio-adaptado":["A-2"]};
@@ -1080,9 +1080,9 @@ function openEdit(id) {
   if(!r) return;
   var html = '<div class="form-group"><label class="form-label">Tipo de habitación</label>'
     + '<select class="form-input form-select" id="e-room">'
-    + '<option value="cama-grande"'+(r.room_type==='cama-grande'?' selected':'')+'>Hab. cama grande — 40€/noche</option>'
+    + '<option value="cama-grande"'+(r.room_type==='cama-grande'?' selected':'')+'>Hab. cama grande — 45€/noche</option>'
     + '<option value="dos-camas"'+(r.room_type==='dos-camas'?' selected':'')+'>Hab. doble 2 camas — 40€/noche</option>'
-    + '<option value="suite"'+(r.room_type==='suite'?' selected':'')+'>Suite con terraza — 75€/noche</option>'
+    + '<option value="suite"'+(r.room_type==='suite'?' selected':'')+'>Suite con terraza — 55€/noche</option>'
     + '<option value="estudio"'+(r.room_type==='estudio'?' selected':'')+'>Estudio Estándar — 60€/noche</option>'
     + '<option value="estudio-adaptado"'+(r.room_type==='estudio-adaptado'?' selected':'')+'>Estudio Adaptado — 60€/noche</option>'
     + '</select></div>'
@@ -1174,9 +1174,9 @@ function renderNuevaForm() {
     + '<div class="form-section">Habitación y fechas</div>'
     + '<div class="form-group"><label class="form-label">Tipo de habitación</label>'
     + '<select class="form-input form-select" id="n-room" onchange="calcPrice()">'
-    + '<option value="cama-grande">Hab. cama grande — 40€/noche</option>'
+    + '<option value="cama-grande">Hab. cama grande — 45€/noche</option>'
     + '<option value="dos-camas">Hab. doble 2 camas — 40€/noche</option>'
-    + '<option value="suite">Suite con terraza — 75€/noche</option>'
+    + '<option value="suite">Suite con terraza — 55€/noche</option>'
     + '<option value="estudio">Estudio Estándar — 60€/noche</option>'
     + '<option value="estudio-adaptado">Estudio Adaptado — 60€/noche</option>'
     + '</select></div>'
@@ -1537,7 +1537,7 @@ async function updateCleaning(id, status) {
 
 // ── INVENTARIO ──
 var INV_LABELS = {'cama-grande':'Hab. cama grande','dos-camas':'Hab. doble 2 camas','suite':'Suite con terraza','estudio':'Estudio Estándar','estudio-adaptado':'Estudio Adaptado'};
-var INV_PRICES = {'cama-grande':'40€/noche','dos-camas':'40€/noche','suite':'75€/noche','estudio':'60€/noche','estudio-adaptado':'60€/noche'};
+var INV_PRICES = {'cama-grande':'45€/noche','dos-camas':'40€/noche','suite':'55€/noche','estudio':'60€/noche','estudio-adaptado':'60€/noche'};
 var INV_MAX = {'cama-grande':10,'dos-camas':5,'suite':5,'estudio':5,'estudio-adaptado':5};
 
 function renderInventario() {
