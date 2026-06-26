@@ -371,7 +371,7 @@ const HOSTAL_NAME = 'Hostal La Plata';
 const PRICES = {"cama-grande":45,"dos-camas":40,"suite":55,"estudio":60,"estudio-adaptado":60};
 const ROOM_LABELS = {"cama-grande":"Hab. cama grande","dos-camas":"Hab. doble 2 camas","suite":"Suite con terraza","estudio":"Estudio Estándar","estudio-adaptado":"Estudio Adaptado"};
 // Mapa de habitaciones físicas por tipo (provisional, pendiente confirmación dueño)
-const ROOMS_BY_TYPE = {"cama-grande":["101","102","103","104"],"dos-camas":["105","106"],"suite":["107","108"],"estudio":["A-1"],"estudio-adaptado":["A-2"]};
+const ROOMS_BY_TYPE = {"cama-grande":["103","106"],"dos-camas":["101","102","104","105","108"],"suite":["107"],"estudio":["2"],"estudio-adaptado":["1"]};
 const ALL_ROOMS = ['101','102','103','104','105','106','107','108','A-1','A-2'];
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const API = SUPABASE_URL + '/rest/v1';
@@ -1538,7 +1538,7 @@ async function updateCleaning(id, status) {
 // ── INVENTARIO ──
 var INV_LABELS = {'cama-grande':'Hab. cama grande','dos-camas':'Hab. doble 2 camas','suite':'Suite con terraza','estudio':'Estudio Estándar','estudio-adaptado':'Estudio Adaptado'};
 var INV_PRICES = {'cama-grande':'45€/noche','dos-camas':'40€/noche','suite':'55€/noche','estudio':'60€/noche','estudio-adaptado':'60€/noche'};
-var INV_MAX = {'cama-grande':10,'dos-camas':5,'suite':5,'estudio':5,'estudio-adaptado':5};
+var INV_MAX = {'cama-grande':2,'dos-camas':5,'suite':1,'estudio':1,'estudio-adaptado':1};
 
 function renderInventario() {
   return inventory.map(function(inv,i){
