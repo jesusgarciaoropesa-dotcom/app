@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="La Plata">
 <title>Admin · Hostal La Plata</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src https://lshxkfzsfscvwxqeesjr.supabase.co https://email-hostal.jesusgarciaoropesa.workers.dev; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -361,6 +362,7 @@ h1,h2,h3{font-family:'Cormorant Garamond',serif}
 <div id="toast"></div>
 
 <script>
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 const SUPABASE_URL = 'https://lshxkfzsfscvwxqeesjr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzaHhrZnpzZnNjdnd4cWVlc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjI2MzgsImV4cCI6MjA5NjE5ODYzOH0.Z1b5rwrvTA1M5P4xYrJ7uvhARp2yLQ0k-7ur51NQRwI';
 let userRole = 'admin'; // 'admin' or 'cleaning'
@@ -801,14 +803,14 @@ function renderDaySummary() {
     html += '<div>';
     if(entradas.length){
       html += '<div style="opacity:0.7;font-weight:600;margin-bottom:2px">Llegan</div>';
-      entradas.forEach(function(r){ html += '<div style="padding:1px 0">'+r.guest_name+(r.room_number?' <span style="opacity:0.8">'+r.room_number+'</span>':'')+'</div>'; });
+      entradas.forEach(function(r){ html += '<div style="padding:1px 0">'+esc(r.guest_name)+(r.room_number?' <span style="opacity:0.8">'+esc(r.room_number)+'</span>':'')+'</div>'; });
     }
     html += '</div>';
     // Salidas
     html += '<div>';
     if(salidas.length){
       html += '<div style="opacity:0.7;font-weight:600;margin-bottom:2px">Salen</div>';
-      salidas.forEach(function(r){ html += '<div style="padding:1px 0">'+r.guest_name+(r.room_number?' <span style="opacity:0.8">'+r.room_number+'</span>':'')+'</div>'; });
+      salidas.forEach(function(r){ html += '<div style="padding:1px 0">'+esc(r.guest_name)+(r.room_number?' <span style="opacity:0.8">'+esc(r.room_number)+'</span>':'')+'</div>'; });
     }
     html += '</div>';
     html += '</div>';
@@ -958,7 +960,7 @@ function resCardCompact(r, i) {
   html += '<span style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex-shrink:0"></span>';
   // Nombre + habitación
   html += '<div style="flex:1;min-width:0">';
-  html += '<div style="font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.guest_name + (isToday?' <span class="today-badge">HOY</span>':'') + '</div>';
+  html += '<div style="font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.guest_name) + (isToday?' <span class="today-badge">HOY</span>':'') + '</div>';
   html += '<div style="font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.room_number?'Hab. '+r.room_number+' · ':'')+fmtDate(r.check_in)+' → '+fmtDate(r.check_out)+' · '+n+'n</div>';
   html += '</div>';
   // Precio
@@ -977,32 +979,32 @@ function resCard(r, i, showLinks) {
   var html = '<div class="res-card' + (urgent?' urgent':'') + '" style="animation-delay:' + i*0.04 + 's">';
   html += '<div class="res-top">';
   html += '<div style="flex:1;min-width:0">';
-  html += '<div class="res-name">' + r.guest_name + '</div>';
-  html += '<div class="res-room-label">' + (r.room_number ? '<strong style="color:var(--cr)">Hab. ' + r.room_number + '</strong> · ' : '') + (ROOM_LABELS[r.room_type]||r.room_type) + '</div>';
+  html += '<div class="res-name">' + esc(r.guest_name) + '</div>';
+  html += '<div class="res-room-label">' + (r.room_number ? '<strong style="color:var(--cr)">Hab. ' + esc(r.room_number) + '</strong> · ' : '') + (ROOM_LABELS[r.room_type]||r.room_type) + '</div>';
   html += '<div class="res-dates"><span>' + fmtDate(r.check_in) + '</span><span style="color:var(--ink3)">&#8594;</span><span>' + fmtDate(r.check_out) + '</span><span class="res-nights">' + n + 'n</span>';
   if(isToday) html += '<span class="today-badge">HOY</span>';
   html += '</div></div>';
-  html += '<span class="pill ' + pc + '">' + r.status + '</span>';
+  html += '<span class="pill ' + pc + '">' + esc(r.status) + '</span>';
   html += '</div>';
   html += '<div class="res-meta">';
   html += '<div class="res-field"><strong>' + (r.total_price||'—') + '€</strong> total</div>';
   html += '<div class="res-field">' + r.num_guests + ' huésped' + (r.num_guests>1?'es':'') + '</div>';
-  if(r.guest_email) html += '<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.guest_email + '</div>';
-  if(r.guest_phone) html += '<div class="res-field" style="grid-column:span 2">' + r.guest_phone + '</div>';
+  if(r.guest_email) html += '<div class="res-field" style="grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(r.guest_email) + '</div>';
+  if(r.guest_phone) html += '<div class="res-field" style="grid-column:span 2">' + esc(r.guest_phone) + '</div>';
   html += '</div>';
   if(r.guest_phone || r.guest_email) {
     html += '<div class="res-contact">';
-    if(r.guest_phone) html += '<button class="contact-btn wa" data-phone="' + r.guest_phone + '" data-name="' + r.guest_name + '" onclick="whatsapp(this.dataset.phone,this.dataset.name)">📱 WhatsApp</button>';
-    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + r.guest_email + '" onclick="window.open(&quot;mailto:&quot;+this.dataset.email)">✉️ Email</button>';
+    if(r.guest_phone) html += '<button class="contact-btn wa" data-phone="' + esc(r.guest_phone) + '" data-name="' + esc(r.guest_name) + '" onclick="whatsapp(this.dataset.phone,this.dataset.name)">📱 WhatsApp</button>';
+    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + esc(r.guest_email) + '" onclick="window.open(&quot;mailto:&quot;+this.dataset.email)">✉️ Email</button>';
     html += '</div>';
   }
   if(showLinks) {
     html += '<div class="res-links"><span class="link-label">💳</span>';
-    html += '<input class="link-input" id="pay-' + id + '" value="' + (r.payment_link||'') + '" placeholder="Enlace de pago…">';
+    html += '<input class="link-input" id="pay-' + id + '" value="' + esc(r.payment_link||'') + '" placeholder="Enlace de pago…">';
     if(r.payment_link) html += '<span class="link-saved">✓</span>';
     html += '<button class="link-save" data-id="' + id + '" data-type="payment" onclick="saveLink(this.dataset.id,this.dataset.type)">Enviar</button></div>';
     html += '<div class="res-links"><span class="link-label">🔑</span>';
-    html += '<input class="link-input" id="glz-' + id + '" value="' + (r.glizzz_link||'') + '" placeholder="Enlace Clizzz…">';
+    html += '<input class="link-input" id="glz-' + id + '" value="' + esc(r.glizzz_link||'') + '" placeholder="Enlace Clizzz…">';
     if(r.glizzz_link) html += '<span class="link-saved">✓</span>';
     html += '<button class="link-save" data-id="' + id + '" data-type="glizzz" onclick="saveLink(this.dataset.id,this.dataset.type)">Enviar</button></div>';
   }
@@ -1011,7 +1013,7 @@ function resCard(r, i, showLinks) {
   if(r.status!=='pendiente') html += '<button class="act-btn" style="background:var(--warn-bg);border-color:#fcd34d;color:var(--warn)" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="pendiente">↩ Pendiente</button>';
   if(r.status!=='cancelada') html += '<button class="act-btn danger" data-id="' + id + '" onclick="quickStatus(this.dataset.id,this.dataset.status)" data-status="cancelada">✗ Cancelar</button>';
   html += '<button class="act-btn" style="flex:0;padding:7px 11px" data-id="' + id + '" onclick="openEdit(this.dataset.id)">✏️</button>';
-  html += '<button class="act-btn danger" style="flex:0;padding:7px 11px" data-id="' + id + '" data-name="' + r.guest_name + '" onclick="deleteRes(this.dataset.id,this.dataset.name)">🗑</button>';
+  html += '<button class="act-btn danger" style="flex:0;padding:7px 11px" data-id="' + id + '" data-name="' + esc(r.guest_name) + '" onclick="deleteRes(this.dataset.id,this.dataset.name)">🗑</button>';
   html += '</div></div>';
   return html;
 }
@@ -1105,11 +1107,11 @@ function openEdit(id) {
     + '<div class="form-group"><label class="form-label">Salida</label>'
     + '<input type="date" class="form-input" id="e-co" value="'+r.check_out+'"></div></div>'
     + '<div class="form-group"><label class="form-label">Nombre completo</label>'
-    + '<input type="text" class="form-input" id="e-name" value="'+r.guest_name+'"></div>'
+    + '<input type="text" class="form-input" id="e-name" value="'+esc(r.guest_name)+'"></div>'
     + '<div class="form-group"><label class="form-label">Teléfono</label>'
-    + '<input type="tel" class="form-input" id="e-phone" value="'+(r.guest_phone||'')+'" inputmode="tel"></div>'
+    + '<input type="tel" class="form-input" id="e-phone" value="'+esc(r.guest_phone||'')+'" inputmode="tel"></div>'
     + '<div class="form-group"><label class="form-label">Email</label>'
-    + '<input type="email" class="form-input" id="e-email" value="'+r.guest_email+'" inputmode="email"></div>'
+    + '<input type="email" class="form-input" id="e-email" value="'+esc(r.guest_email)+'" inputmode="email"></div>'
     + '<div class="form-row"><div class="form-group"><label class="form-label">Huéspedes</label>'
     + '<select class="form-input form-select" id="e-guests">'
     + [1,2,3,4,5,6].map(function(n){ return '<option value="'+n+'"'+(r.num_guests===n?' selected':'')+'>'+n+'</option>'; }).join('')
@@ -1472,7 +1474,7 @@ function renderLimpieza() {
       var card = '<div class="clean-card'+(isPast?' urgent':'')+'" style="animation-delay:'+i*0.04+'s">';
       card += '<div class="clean-status-dot '+dot+'"></div>';
       card += '<div class="clean-info"><div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-      card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out);
+      card += '<div class="clean-meta">'+esc(r.guest_name)+' · Checkout: '+fmtDate(r.check_out);
       if(isToday) card += ' · <strong style="color:var(--warn)">HOY</strong>';
       if(isPast) card += ' · <strong style="color:var(--danger)">VENCIDO</strong>';
       card += '</div></div>';
@@ -1488,7 +1490,7 @@ function renderLimpieza() {
       var card = '<div class="clean-card done" style="animation-delay:'+i*0.04+'s">';
       card += '<div class="clean-status-dot dot-done"></div>';
       card += '<div class="clean-info"><div class="clean-room">'+(ROOM_LABELS[r.room_type]||r.room_type)+'</div>';
-      card += '<div class="clean-meta">'+r.guest_name+' · Checkout: '+fmtDate(r.check_out)+'</div></div>';
+      card += '<div class="clean-meta">'+esc(r.guest_name)+' · Checkout: '+fmtDate(r.check_out)+'</div></div>';
       card += '<select class="clean-sel" onchange="updateCleaning(\''+r.id+'\',this.value)">';
       CLEAN_STATES.forEach(function(s){ card += '<option value="'+s+'"'+(s==='finalizada'?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>'; });
       card += '</select></div>';
@@ -1518,7 +1520,7 @@ function renderLimpiezaHistorial() {
       var card='<div class="clean-card done" style="opacity:0.9">';
       card+='<div class="clean-status-dot dot-done"></div>';
       card+='<div class="clean-info"><div class="clean-room">'+(r.room_number?'Habitación '+r.room_number:(ROOM_LABELS[r.room_type]||r.room_type))+'</div>';
-      card+='<div class="clean-meta">'+r.guest_name+' · '+fmtDate(r.check_out)+'</div></div>';
+      card+='<div class="clean-meta">'+esc(r.guest_name)+' · '+fmtDate(r.check_out)+'</div></div>';
       card+='<span style="font-size:11px;color:var(--ok);font-weight:600">✓</span>';
       card+='</div>';
       return card;
@@ -1727,7 +1729,7 @@ function renderPlanning() {
         var col = PLAN_COLORS[res.room_type] || '#9d2235';
         // Nombre el primer día de la estancia o el primer día del mes si ya venía ocupada
         var showName = (ds===res.check_in) || (idx===0);
-        var nm = showName ? (res.guest_name||'').split(' ')[0] : '';
+        var nm = showName ? esc((res.guest_name||'').split(' ')[0]) : '';
         html += '<td class="plan-cell ocupada" style="background:'+col+'" data-id="'+res.id+'" onclick="planOpenRes(this.dataset.id)">'+nm+'</td>';
       } else {
         html += '<td class="plan-cell libre'+(wknd?' wknd':'')+'" data-room="'+room+'" data-date="'+ds+'" onclick="planNewRes(this.dataset.room,this.dataset.date)"></td>';
