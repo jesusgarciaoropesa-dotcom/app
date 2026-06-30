@@ -413,18 +413,6 @@ async function sbApi(path, method, body) {
   return t ? JSON.parse(t) : [];
 }
 
-// ── EMAIL ──
-async function sendEmail(to, subject, html) {
-  try {
-    var res = await fetch(RESEND_WORKER, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({from: HOSTAL_NAME+' <'+FROM_EMAIL+'>', to:[to], subject:subject, html:html})
-    });
-    return res.ok;
-  } catch(e) { return false; }
-}
-
 // ── CORREOS: centralizados en la Edge Function 'daily-emails' ──
 // La app ya no construye los correos; le pide a la Edge Function que los envíe.
 // Así el diseño/plantilla vive en un solo sitio (la Edge Function).
@@ -570,8 +558,8 @@ function renderCleaningHistory() {
       var card = '<div class="clean-card done" style="opacity:0.9">';
       card += '<div class="clean-status-dot dot-done"></div>';
       card += '<div class="clean-info">';
-      card += '<div class="clean-room">'+(r.room_number?'Habitación '+r.room_number:(ROOM_LABELS[r.room_type]||r.room_type))+'</div>';
-      card += '<div class="clean-meta">'+(r.room_number?(ROOM_LABELS[r.room_type]||r.room_type)+' · ':'')+fmtDate(r.check_out)+'</div>';
+      card += '<div class="clean-room">'+(r.room_number?'Habitación '+esc(r.room_number):(ROOM_LABELS[r.room_type]||esc(r.room_type)))+'</div>';
+      card += '<div class="clean-meta">'+(r.room_number?(ROOM_LABELS[r.room_type]||esc(r.room_type))+' · ':'')+fmtDate(r.check_out)+'</div>';
       card += '</div>';
       card += '<span style="font-size:11px;color:var(--ok);font-weight:600">✓</span>';
       card += '</div>';
@@ -995,7 +983,7 @@ function resCard(r, i, showLinks) {
   if(r.guest_phone || r.guest_email) {
     html += '<div class="res-contact">';
     if(r.guest_phone) html += '<button class="contact-btn wa" data-phone="' + esc(r.guest_phone) + '" data-name="' + esc(r.guest_name) + '" onclick="whatsapp(this.dataset.phone,this.dataset.name)">📱 WhatsApp</button>';
-    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + esc(r.guest_email) + '" onclick="window.open(&quot;mailto:&quot;+this.dataset.email)">✉️ Email</button>';
+    if(r.guest_email) html += '<button class="contact-btn mail" data-email="' + esc(r.guest_email) + '" onclick="window.open(&quot;mailto:&quot;+encodeURIComponent(this.dataset.email))">✉️ Email</button>';
     html += '</div>';
   }
   if(showLinks) {
